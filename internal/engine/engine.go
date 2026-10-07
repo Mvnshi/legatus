@@ -1,0 +1,293 @@
+// Package engine walks a run through its workflow: agent steps, checks and independent reviews. Its job
+// that sets Legatus apart is what happens at a usage limit: the interrupted step continues on another
+// login (or waits for the first one to reset) and the rest of the workflow still runs.
+package engine
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/Mvnshi/legatus/internal/agent"
+	"github.com/Mvnshi/legatus/internal/model"
+	"github.com/Mvnshi/legatus/internal/pool"
+	"github.com/Mvnshi/legatus/internal/sandbox"
+	"github.com/Mvnshi/legatus/internal/store"
+	"github.com/Mvnshi/legatus/internal/workflow"
+	"github.com/Mvnshi/legatus/internal/worktree"
+)
+
+// Engine runs workflows. Fields other than the first four are optional.
+type Engine struct {
+	Store     *store.Store
+	Pool      *pool.Pool
+	Worktrees *worktree.Manager
+	Backends  map[string]agent.Backend // by provider name
+	DataDir   string                   // worktrees live under DataDir/worktrees
+
+	RedactPII bool              // also remove email addresses from prompts
+	OnEvent   func(model.Event) // called for every journal event, as it happens
+	Sleep     func(context.Context, time.Duration) error
+	Now       func() time.Time
+	Environ   func() []string // the environment agents are derived from; os.Environ when nil
+
+	AgentTimeout time.Duration // per attempt, when a step sets none; 30 minutes when zero
+	CheckTimeout time.Duration // per command, when a step sets none; 10 minutes when zero
+}
+
+func (e *Engine) now() time.Time {
+	if e.Now != nil {
+		return e.Now()
+	}
+	return time.Now()
+}
+
+func (e *Engine) sleep(ctx context.Context, d time.Duration) error {
+	if e.Sleep != nil {
+		return e.Sleep(ctx, d)
+	}
+	if d <= 0 {
+		return ctx.Err()
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}
+
+func (e *Engine) environ() []string {
+	if e.Environ != nil {
+		return e.Environ()
+	}
+	return os.Environ()
+}
+
+func newID() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b)
+}
+
+// emit writes one journal event and passes it to OnEvent.
+func (e *Engine) emit(runID, step, typ string, data map[string]any) {
+	ev := model.Event{Time: e.now().UTC(), Run: runID, Step: step, Type: typ, Data: data}
+	_ = e.Store.Append(ev)
+	if e.OnEvent != nil {
+		e.OnEvent(ev)
+	}
+}
+
+func (e *Engine) save(run *model.Run) error { return e.Store.Save(run) }
+
+// NewRun creates the run record and its worktree. It does not start the work.
+func (e *Engine) NewRun(ctx context.Context, task model.Task, wf *workflow.Workflow) (*model.Run, error) {
+	if err := wf.Validate(); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(task.Prompt) == "" {
+		return nil, errors.New("a task needs a prompt")
+	}
+	if task.Repo == "" {
+		return nil, errors.New("a task needs a repository")
+	}
+	id := newID()
+	task.ID = id
+	task.Workflow = wf.Name
+	if task.CreatedAt.IsZero() {
+		task.CreatedAt = e.now().UTC()
+	}
+	// Secrets are removed before anything is stored: the run file, the journal and the evidence report
+	// (which ends up in pull requests) only ever hold the redacted text.
+	var findings []sandbox.Finding
+	task.Prompt, findings = sandbox.Redact(task.Prompt, e.RedactPII)
+	if task.Title == "" {
+		task.Title = firstLine(task.Prompt, 80)
+	} else {
+		task.Title, _ = sandbox.Redact(task.Title, e.RedactPII)
+	}
+	branch := "legatus/" + id
+	dir := filepath.Join(e.DataDir, "worktrees", id)
+	if err := e.Worktrees.Create(ctx, task.Repo, task.Base, branch, dir); err != nil {
+		return nil, err
+	}
+	head, err := e.Worktrees.Head(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+	run := &model.Run{
+		ID: id, Task: task, Branch: branch, Worktree: dir, BaseCommit: head,
+		Status: model.Queued, CreatedAt: e.now().UTC(),
+	}
+	for _, s := range wf.Steps {
+		run.Steps = append(run.Steps, model.StepState{ID: s.ID, Kind: s.Kind(), Status: model.Pending})
+	}
+	if err := e.save(run); err != nil {
+		return nil, err
+	}
+	e.emit(id, "", "run.created", map[string]any{"title": task.Title, "branch": branch, "base": head, "workflow": wf.Name, "redacted": sandbox.Summary(findings)})
+	return run, nil
+}
+
+func firstLine(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+		s = s[:i]
+	}
+	if len(s) > max {
+		s = s[:max-1] + "…"
+	}
+	return s
+}
+
+type outcomeKind int
+
+const (
+	outOK outcomeKind = iota
+	outRetry
+	outHuman
+	outFail
+)
+
+type outcome struct {
+	kind     outcomeKind
+	retryTo  int
+	feedback string
+	message  string
+}
+
+// Execute runs the workflow from the run's current step until the run succeeds, fails, needs a person,
+// or ctx is cancelled. Cancelling leaves the run resumable: call Execute again to continue. It returns
+// an error only when ctx ends or the run cannot be saved; a failed run is reported in its status.
+func (e *Engine) Execute(ctx context.Context, id string, wf *workflow.Workflow) error {
+	run, err := e.Store.Load(id)
+	if err != nil {
+		return err
+	}
+	if run.Status.Terminal() || run.Status == model.NeedsHuman {
+		return nil
+	}
+	if len(run.Steps) != len(wf.Steps) {
+		return fmt.Errorf("run %s was made with a different workflow (%d steps, now %d)", id, len(run.Steps), len(wf.Steps))
+	}
+	if run.Status == model.Running || run.Status == model.WaitingCapacity {
+		e.emit(id, "", "run.resumed", map[string]any{"from_step": run.Current, "was": string(run.Status)})
+	}
+	run.Status = model.Running
+	run.Error = ""
+	run.WaitUntil = time.Time{}
+	if err := e.save(run); err != nil {
+		return err
+	}
+	if run.Current == 0 && run.Steps[0].Attempts == 0 {
+		e.emit(id, "", "run.started", nil)
+	}
+
+	for run.Current < len(wf.Steps) {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		idx := run.Current
+		step := wf.Steps[idx]
+		st := &run.Steps[idx]
+		if st.StartedAt.IsZero() {
+			st.StartedAt = e.now().UTC()
+		}
+		st.Status = model.Running
+		if err := e.save(run); err != nil {
+			return err
+		}
+		e.emit(id, step.ID, "step.started", map[string]any{"type": step.Type, "index": idx})
+
+		var out outcome
+		switch step.Kind() {
+		case model.StepAgent:
+			out, err = e.agentStep(ctx, run, wf, idx)
+		case model.StepCheck:
+			out, err = e.checkStep(ctx, run, wf, idx)
+		case model.StepReview:
+			out, err = e.reviewStep(ctx, run, wf, idx)
+		}
+		if err != nil {
+			if ctx.Err() != nil {
+				_ = e.save(run)
+				return ctx.Err()
+			}
+			out = outcome{kind: outFail, message: err.Error()}
+		}
+
+		switch out.kind {
+		case outOK:
+			st.Status = model.Succeeded
+			st.EndedAt = e.now().UTC()
+			e.emit(id, step.ID, "step.succeeded", map[string]any{"summary": st.Summary})
+			run.Current++
+		case outRetry:
+			if run.Retries == nil {
+				run.Retries = map[string]int{}
+			}
+			run.Retries[step.ID]++
+			run.Feedback = out.feedback
+			st.Status = model.Failed
+			st.Error = out.message
+			st.EndedAt = e.now().UTC()
+			e.emit(id, step.ID, "step.sent_back", map[string]any{"to": wf.Steps[out.retryTo].ID, "reason": out.message, "times": run.Retries[step.ID]})
+			for i := out.retryTo; i <= idx; i++ {
+				run.Steps[i].Status = model.Pending
+				run.Steps[i].EndedAt = time.Time{}
+			}
+			run.Current = out.retryTo
+		case outHuman:
+			st.Status = model.NeedsHuman
+			st.Error = out.message
+			st.EndedAt = e.now().UTC()
+			run.Status = model.NeedsHuman
+			run.Error = out.message
+			e.emit(id, step.ID, "run.needs_human", map[string]any{"reason": out.message})
+			return e.finish(ctx, run, wf)
+		case outFail:
+			st.Status = model.Failed
+			st.Error = out.message
+			st.EndedAt = e.now().UTC()
+			run.Status = model.Failed
+			run.Error = out.message
+			e.emit(id, step.ID, "run.failed", map[string]any{"error": out.message})
+			return e.finish(ctx, run, wf)
+		}
+		if err := e.save(run); err != nil {
+			return err
+		}
+	}
+
+	// Everything passed. Commit whatever is left, including files that checks wrote.
+	if committed, err := e.Worktrees.CommitAll(ctx, run.Worktree, "legatus: finalize "+run.ID); err != nil {
+		run.Status = model.Failed
+		run.Error = "could not commit the result: " + err.Error()
+		e.emit(id, "", "run.failed", map[string]any{"error": run.Error})
+		return e.finish(ctx, run, wf)
+	} else if committed {
+		e.emit(id, "", "run.committed", map[string]any{"message": "finalize"})
+	}
+	run.Status = model.Succeeded
+	e.emit(id, "", "run.succeeded", map[string]any{"branch": run.Branch})
+	return e.finish(ctx, run, wf)
+}
+
+// finish saves the final state and writes the evidence report.
+func (e *Engine) finish(ctx context.Context, run *model.Run, wf *workflow.Workflow) error {
+	if err := e.save(run); err != nil {
+		return err
+	}
+	return e.writeEvidence(ctx, run, wf)
+}

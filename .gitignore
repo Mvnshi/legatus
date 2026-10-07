@@ -1,0 +1,6 @@
+/legatus
+/legatus.exe
+/dist/
+*.test
+*.out
+.legatus/
