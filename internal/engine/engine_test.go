@@ -564,3 +564,112 @@ func TestParseVerdict(t *testing.T) {
 		}
 	}
 }
+
+// Found by running the real Codex: an agent that cannot do the work often exits cleanly and says so in words.
+func TestAnAgentThatChangedNothingIsNotASuccess(t *testing.T) {
+	be := fake.New("codex", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
+		return agent.Result{Summary: "I could not write the file: the workspace is read-only."}, nil
+	})
+	h := newHarness(t, codexAccounts("a"), be)
+	run := h.run(workflow.Default([]string{"git --version"}, false), "create a file")
+	if run.Status != model.Failed || !strings.Contains(run.Error, "without changing any file") || !strings.Contains(run.Error, "workspace is read-only") {
+		t.Fatalf("status %s, error %q", run.Status, run.Error)
+	}
+	if run.Steps[1].Status == model.Succeeded {
+		t.Fatal("the checks must not run after a step that did nothing")
+	}
+	if !hasEvent(h.events(run), "agent.no_changes") {
+		t.Fatal("no agent.no_changes event")
+	}
+}
+
+func TestAStepThatMayBeEmptyCanFinishWithoutChanges(t *testing.T) {
+	be := fake.New("codex", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
+		return agent.Result{Summary: "There is no bug; nothing to change."}, nil
+	})
+	h := newHarness(t, codexAccounts("a"), be)
+	wf := workflow.Default(nil, false)
+	wf.Steps[0].AllowEmpty = true
+	run := h.run(wf, "investigate whether there is a bug")
+	if run.Status != model.Succeeded {
+		t.Fatalf("status %s: %s", run.Status, run.Error)
+	}
+}
+
+func TestABrokenAgentSandboxStopsTheRunBeforeAnyWorkAndSaysHowToProceed(t *testing.T) {
+	be := fake.New("codex", nil)
+	be.PreflightErr = errors.New("Access is denied")
+	h := newHarness(t, codexAccounts("a"), be)
+	run := h.run(workflow.Default(nil, false), "task")
+	if run.Status != model.Failed {
+		t.Fatalf("status %s", run.Status)
+	}
+	for _, want := range []string{`sandbox for account "a" does not work`, "Access is denied", "--no-sandbox"} {
+		if !strings.Contains(run.Error, want) {
+			t.Errorf("error lacks %q: %s", want, run.Error)
+		}
+	}
+	if len(be.Calls()) != 0 {
+		t.Fatal("the agent ran even though its sandbox does not work")
+	}
+	// The answer is remembered: a second run does not pay for the check again.
+	h.run(workflow.Default(nil, false), "another task")
+	if be.Preflights != 1 {
+		t.Fatalf("the sandbox was checked %d times, want once", be.Preflights)
+	}
+	var checked int
+	for _, ev := range h.events(run) {
+		if ev.Type == "sandbox.checked" && ev.Data["ok"] == false {
+			checked++
+		}
+	}
+	if checked != 1 {
+		t.Fatalf("expected one failed sandbox.checked event, got %d", checked)
+	}
+}
+
+func TestRunningWithoutTheAgentSandboxIsAnExplicitChoiceThatSkipsTheCheck(t *testing.T) {
+	be := fake.New("codex", nil)
+	be.PreflightErr = errors.New("Access is denied")
+	h := newHarness(t, codexAccounts("a"), be)
+	wf := workflow.Default([]string{"git --version"}, false)
+	wf.Steps[0].Sandbox.Mode = "none"
+	run := h.run(wf, "task")
+	if run.Status != model.Succeeded {
+		t.Fatalf("status %s: %s", run.Status, run.Error)
+	}
+	if be.Preflights != 0 {
+		t.Fatal("the sandbox check ran for a step that opted out")
+	}
+	if calls := be.Calls(); len(calls) != 1 || !calls[0].Sandbox.Unrestricted {
+		t.Fatalf("calls = %+v", calls)
+	}
+}
+
+func TestAReviewerThatTouchesFilesHasThemRevertedAndSaysSo(t *testing.T) {
+	author := fake.New("codex", nil)
+	judge := fake.New("claude", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
+		os.WriteFile(filepath.Join(req.Dir, "reviewer-was-here.txt"), []byte("oops\n"), 0o600)
+		os.WriteFile(filepath.Join(req.Dir, "README.md"), []byte("changed by the reviewer\n"), 0o600)
+		return agent.Result{Summary: `{"verdict":"approve","summary":"fine"}`}, nil
+	})
+	accounts := append(codexAccounts("a"), pool.Account{ID: "c", Provider: "claude"})
+	h := newHarness(t, accounts, author, judge)
+	run := h.run(workflow.Default(nil, true), "add notes")
+	if run.Status != model.Succeeded {
+		t.Fatalf("status %s: %s", run.Status, run.Error)
+	}
+	if !hasEvent(h.events(run), "review.modified_files") || !strings.Contains(run.Steps[1].Summary, "they were reverted") {
+		t.Fatalf("the reviewer's changes were not reported: %q", run.Steps[1].Summary)
+	}
+	if _, err := os.Stat(filepath.Join(run.Worktree, "reviewer-was-here.txt")); !os.IsNotExist(err) {
+		t.Fatal("the reviewer's new file is still there")
+	}
+	// (git may check files out with Windows line endings, so compare the words, not the bytes)
+	if data, _ := os.ReadFile(filepath.Join(run.Worktree, "README.md")); strings.TrimSpace(string(data)) != "hello" {
+		t.Fatalf("the reviewer's edit to README.md survived: %q", data)
+	}
+	if strings.Contains(committedFiles(t, run), "reviewer-was-here") {
+		t.Fatal("the reviewer's file was committed")
+	}
+}

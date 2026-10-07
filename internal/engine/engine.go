@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/agent"
@@ -39,6 +40,9 @@ type Engine struct {
 
 	AgentTimeout time.Duration // per attempt, when a step sets none; 30 minutes when zero
 	CheckTimeout time.Duration // per command, when a step sets none; 10 minutes when zero
+
+	pfMu   sync.Mutex
+	pfDone map[string]error // sandbox check results by account, for this process
 }
 
 func (e *Engine) now() time.Time {
@@ -82,6 +86,12 @@ func newID() string {
 
 // emit writes one journal event and passes it to OnEvent.
 func (e *Engine) emit(runID, step, typ string, data map[string]any) {
+	// Times are written the same way live and in the journal.
+	for k, v := range data {
+		if t, ok := v.(time.Time); ok {
+			data[k] = t.UTC().Format(time.RFC3339)
+		}
+	}
 	ev := model.Event{Time: e.now().UTC(), Run: runID, Step: step, Type: typ, Data: data}
 	_ = e.Store.Append(ev)
 	if e.OnEvent != nil {
@@ -134,6 +144,9 @@ func (e *Engine) NewRun(ctx context.Context, task model.Task, wf *workflow.Workf
 		run.Steps = append(run.Steps, model.StepState{ID: s.ID, Kind: s.Kind(), Status: model.Pending})
 	}
 	if err := e.save(run); err != nil {
+		return nil, err
+	}
+	if err := e.saveWorkflow(id, wf); err != nil {
 		return nil, err
 	}
 	e.emit(id, "", "run.created", map[string]any{"title": task.Title, "branch": branch, "base": head, "workflow": wf.Name, "redacted": sandbox.Summary(findings)})
@@ -290,4 +303,35 @@ func (e *Engine) finish(ctx context.Context, run *model.Run, wf *workflow.Workfl
 		return err
 	}
 	return e.writeEvidence(ctx, run, wf)
+}
+
+// saveWorkflow keeps the workflow with the run, so the run can be resumed without being told it again.
+func (e *Engine) saveWorkflow(id string, wf *workflow.Workflow) error {
+	data, err := wf.Marshal()
+	if err != nil {
+		return err
+	}
+	dir, err := e.Store.RunDir(id)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "workflow.yaml"), data, 0o600)
+}
+
+// LoadWorkflow reads the workflow a run was created with.
+func (e *Engine) LoadWorkflow(id string) (*workflow.Workflow, error) {
+	dir, err := e.Store.RunDir(id)
+	if err != nil {
+		return nil, err
+	}
+	return workflow.Load(filepath.Join(dir, "workflow.yaml"))
+}
+
+// Resume continues a run with the workflow it was created with.
+func (e *Engine) Resume(ctx context.Context, id string) error {
+	wf, err := e.LoadWorkflow(id)
+	if err != nil {
+		return err
+	}
+	return e.Execute(ctx, id, wf)
 }

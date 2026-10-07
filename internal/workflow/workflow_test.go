@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -109,5 +110,50 @@ func TestDefaultWorkflowIsValid(t *testing.T) {
 		if len(w.Steps) != tc.steps {
 			t.Fatalf("%+v: %d steps", tc, len(w.Steps))
 		}
+	}
+}
+
+func TestAWorkflowSurvivesBeingSavedAndReadBack(t *testing.T) {
+	w, err := Parse([]byte(good))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Steps[0].AllowEmpty = true
+	w.Steps[0].Sandbox = Sandbox{Network: true, Env: []string{"NPM_TOKEN"}}
+	data, err := w.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	back, err := Parse(data)
+	if err != nil {
+		t.Fatalf("saved workflow does not parse: %v\n%s", err, data)
+	}
+	if len(back.Steps) != 3 || !back.Steps[0].AllowEmpty || back.Steps[0].Timeout != Duration(20*time.Minute) ||
+		!back.Steps[0].Sandbox.Network || back.Steps[2].OnFail == nil || back.Steps[2].OnFail.RetryWith != "implement" {
+		t.Fatalf("lost something on the round trip:\n%s", data)
+	}
+	if strings.Contains(string(data), "max_attempts") || strings.Contains(string(data), "prompt:") {
+		t.Fatalf("empty fields should be left out:\n%s", data)
+	}
+}
+
+func TestSandboxModeMustBeAgentOrNone(t *testing.T) {
+	ok := "name: x\nsteps:\n  - id: a\n    type: agent\n    agent: any\n    sandbox: {mode: %s}\n"
+	for _, mode := range []string{"agent", "none"} {
+		if _, err := Parse([]byte(fmt.Sprintf(ok, mode))); err != nil {
+			t.Errorf("mode %s rejected: %v", mode, err)
+		}
+	}
+	_, err := Parse([]byte(fmt.Sprintf(ok, "off")))
+	if err == nil || !strings.Contains(err.Error(), "sandbox mode must be agent or none") {
+		t.Fatalf("err = %v", err)
+	}
+	w, _ := Parse([]byte(fmt.Sprintf(ok, "none")))
+	if !w.Steps[0].Unsandboxed() {
+		t.Fatal("Unsandboxed() is false for mode none")
+	}
+	w, _ = Parse([]byte(fmt.Sprintf(ok, "agent")))
+	if w.Steps[0].Unsandboxed() {
+		t.Fatal("Unsandboxed() is true for mode agent")
 	}
 }

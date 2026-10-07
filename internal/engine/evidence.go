@@ -114,11 +114,9 @@ func shortSHA(s string) string {
 }
 
 func formatUntil(v any) string {
-	switch t := v.(type) {
-	case time.Time:
-		return t.Format(time.RFC3339)
-	case string:
-		return t
+	text := fmt.Sprint(v)
+	if t, err := time.Parse(time.RFC3339, text); err == nil {
+		return t.UTC().Format("2006-01-02 15:04 UTC")
 	}
-	return fmt.Sprint(v)
+	return text
 }

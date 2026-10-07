@@ -13,8 +13,9 @@ import (
 
 // Sandbox is what the agent may do. A backend turns it into the agent's own flags.
 type Sandbox struct {
-	ReadOnly bool // the agent may read but not change files (reviewers)
-	Network  bool // the agent may use the network
+	ReadOnly     bool // the agent may read but not change files (reviewers)
+	Network      bool // the agent may use the network
+	Unrestricted bool // run without the agent's own operating-system sandbox (the user chose this explicitly)
 }
 
 // Request is one prompt to run.
@@ -61,6 +62,16 @@ func (e *LimitError) Error() string {
 		return "usage limit reached: " + e.Message
 	}
 	return fmt.Sprintf("usage limit reached until %s: %s", e.ResetAt.Format(time.RFC3339), e.Message)
+}
+
+// Preflighter is implemented by backends that can check, cheaply and without using any model, that the
+// agent's own sandbox works for a login on this machine. A sandbox that cannot start is worse than none:
+// the agent hangs or cannot write, so Legatus checks before sending work, and does not fall back to no
+// sandbox unless the user asked for that.
+type Preflighter interface {
+	// Preflight returns nil when sandboxed work can run for the account, or an error that says what is
+	// wrong. dir is a scratch directory the check may use.
+	Preflight(ctx context.Context, a pool.Account, dir string, env []string) error
 }
 
 // Backend drives one kind of agent.

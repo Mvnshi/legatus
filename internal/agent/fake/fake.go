@@ -21,9 +21,11 @@ type Backend struct {
 	Name    string
 	Handler Handler
 
-	mu    sync.Mutex
-	calls map[string]int
-	Log   []Call // every request received, in order
+	mu           sync.Mutex
+	calls        map[string]int
+	Log          []Call // every request received, in order
+	PreflightErr error  // returned by Preflight
+	Preflights   int    // how many times Preflight was called
 }
 
 // Call records one request.
@@ -33,6 +35,14 @@ type Call struct {
 	Prompt  string
 	Env     []string
 	Sandbox agent.Sandbox
+}
+
+// Preflight makes the fake behave like a backend whose sandbox check can fail: set PreflightErr.
+func (b *Backend) Preflight(ctx context.Context, a pool.Account, dir string, env []string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.Preflights++
+	return b.PreflightErr
 }
 
 // New returns a backend for the provider name whose behaviour is h. A nil h writes one file and succeeds.

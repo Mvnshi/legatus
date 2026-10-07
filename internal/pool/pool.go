@@ -140,6 +140,21 @@ func (p *Pool) Remove(id string) {
 	p.fire()
 }
 
+// SetDisabled turns an account off or on. Work already running on it is not interrupted.
+func (p *Pool) SetDisabled(id string, disabled bool) bool {
+	p.mu.Lock()
+	s, ok := p.accounts[id]
+	if ok {
+		s.Disabled = disabled
+		p.notify()
+	}
+	p.mu.Unlock()
+	if ok {
+		p.fire()
+	}
+	return ok
+}
+
 // SetUsage records how much usage an account has left, in percent, when a probe knows. The scheduler
 // prefers accounts with more left.
 func (p *Pool) SetUsage(id string, remainingPct float64) {

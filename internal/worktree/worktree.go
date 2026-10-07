@@ -192,6 +192,16 @@ func (m *Manager) CommitAll(ctx context.Context, dir, message string) (bool, err
 	return err == nil, err
 }
 
+// Reset throws away every uncommitted change, including new files, leaving the worktree at its last
+// commit. It is used to undo what a reviewer touched.
+func (m *Manager) Reset(ctx context.Context, dir string) error {
+	if _, err := m.run(ctx, dir, "reset", "--hard", "HEAD"); err != nil {
+		return err
+	}
+	_, err := m.run(ctx, dir, "clean", "-fdq")
+	return err
+}
+
 // Head is the commit the worktree is at.
 func (m *Manager) Head(ctx context.Context, dir string) (string, error) {
 	out, err := m.run(ctx, dir, "rev-parse", "HEAD")

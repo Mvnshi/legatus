@@ -30,6 +30,10 @@ import (
 // Duration reads values such as "90s" or "10m" from YAML.
 type Duration time.Duration
 
+func (d Duration) IsZero() bool { return d == 0 }
+
+func (d Duration) MarshalYAML() (any, error) { return time.Duration(d).String(), nil }
+
 func (d *Duration) UnmarshalYAML(n *yaml.Node) error {
 	var s string
 	if err := n.Decode(&s); err != nil {
@@ -52,22 +56,30 @@ type OnFail struct {
 // Sandbox is what an agent step may do. The zero value is the safe default: write inside the run's
 // worktree only, no network, no inherited secrets.
 type Sandbox struct {
-	Network bool     `yaml:"network"`
-	Env     []string `yaml:"env"` // names of environment variables this step may see
+	// Mode is "agent" (the agent's own operating-system sandbox; the default) or "none" (no such sandbox;
+	// the agent still works in the worktree with a scrubbed environment, but can reach whatever the user's
+	// account can). "none" is a decision for the person running the workflow, never a default.
+	Mode    string   `yaml:"mode,omitempty"`
+	Network bool     `yaml:"network,omitempty"`
+	Env     []string `yaml:"env,omitempty"` // names of environment variables this step may see
 }
 
 // Step is one stage of a workflow.
 type Step struct {
 	ID          string   `yaml:"id"`
 	Type        string   `yaml:"type"`
-	Agent       string   `yaml:"agent"`        // "any", a provider such as "codex", or "other-than:<step id>"
-	Prompt      string   `yaml:"prompt"`       // overrides the default prompt; may use {{task}} {{failure}} {{handoff}} {{diff}}
-	Run         []string `yaml:"run"`          // check commands, run in the worktree
-	Timeout     Duration `yaml:"timeout"`      // per attempt; 0 means the default
-	MaxAttempts int      `yaml:"max_attempts"` // for agent steps that fail for reasons other than a usage limit
-	OnFail      *OnFail  `yaml:"on_fail"`
-	Sandbox     Sandbox  `yaml:"sandbox"`
+	Agent       string   `yaml:"agent,omitempty"`        // "any", a provider such as "codex", or "other-than:<step id>"
+	Prompt      string   `yaml:"prompt,omitempty"`       // overrides the default prompt; may use {{task}} {{failure}} {{handoff}} {{diff}}
+	Run         []string `yaml:"run,omitempty"`          // check commands, run in the worktree
+	Timeout     Duration `yaml:"timeout,omitempty"`      // per attempt; 0 means the default
+	MaxAttempts int      `yaml:"max_attempts,omitempty"` // for agent steps that fail for reasons other than a usage limit
+	OnFail      *OnFail  `yaml:"on_fail,omitempty"`
+	Sandbox     Sandbox  `yaml:"sandbox,omitempty"`
+	AllowEmpty  bool     `yaml:"allow_empty,omitempty"` // an agent step may finish without changing any file (investigations)
 }
+
+// Unsandboxed reports whether the step asks to run without the agent's own sandbox.
+func (s Step) Unsandboxed() bool { return s.Sandbox.Mode == "none" }
 
 // Kind is the step's type as the shared model type.
 func (s Step) Kind() model.StepKind { return model.StepKind(s.Type) }
@@ -156,6 +168,9 @@ func (w *Workflow) Validate() error {
 				}
 			}
 		}
+		if m := s.Sandbox.Mode; m != "" && m != "agent" && m != "none" {
+			add("%s: sandbox mode must be agent or none, not %q", where, m)
+		}
 		if s.Timeout < 0 {
 			add("%s: timeout must not be negative", where)
 		}
@@ -204,6 +219,9 @@ func Default(checks []string, review bool) *Workflow {
 	}
 	return w
 }
+
+// Marshal renders the workflow as YAML that Parse reads back.
+func (w *Workflow) Marshal() ([]byte, error) { return yaml.Marshal(w) }
 
 // StepIndex returns the position of the step with this id, or -1.
 func (w *Workflow) StepIndex(id string) int {

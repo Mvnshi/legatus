@@ -46,7 +46,7 @@ func (e *Engine) agentStep(ctx context.Context, run *model.Run, wf *workflow.Wor
 		prompt: func() (string, error) {
 			return e.implementPrompt(ctx, run, step), nil
 		},
-		sandbox: agent.Sandbox{Network: step.Sandbox.Network},
+		sandbox: agent.Sandbox{Network: step.Sandbox.Network, Unrestricted: step.Unsandboxed()},
 	})
 	if err != nil {
 		return outcome{}, err
@@ -57,6 +57,17 @@ func (e *Engine) agentStep(ctx context.Context, run *model.Run, wf *workflow.Wor
 	run.Handoff, run.Feedback = "", ""
 	if _, err := e.Worktrees.CommitAll(ctx, run.Worktree, "legatus: "+step.ID); err != nil {
 		return outcome{}, fmt.Errorf("could not commit the agent's work: %w", err)
+	}
+	if !step.AllowEmpty {
+		stat, err := e.Worktrees.DiffStat(ctx, run.Worktree, run.BaseCommit)
+		if err != nil {
+			return outcome{}, err
+		}
+		if strings.TrimSpace(stat) == "" {
+			// An agent that could not do the work often still exits cleanly and says so in words.
+			e.emit(run.ID, step.ID, "agent.no_changes", map[string]any{"said": clip(cr.res.Summary, 1500)})
+			return outcome{kind: outFail, message: "the agent finished without changing any file. It said: " + firstLine(cr.res.Summary, 300)}, nil
+		}
 	}
 	return outcome{kind: outOK}, nil
 }
@@ -70,12 +81,21 @@ func (e *Engine) reviewStep(ctx context.Context, run *model.Run, wf *workflow.Wo
 		prompt: func() (string, error) {
 			return e.reviewPrompt(ctx, run, wf)
 		},
-		sandbox: agent.Sandbox{ReadOnly: true},
+		sandbox: agent.Sandbox{ReadOnly: true, Unrestricted: step.Unsandboxed()},
 	})
 	if err != nil {
 		return outcome{}, err
 	}
 	st := &run.Steps[idx]
+	// A reviewer judges the change; it never gets to alter it. Whatever it touched is reverted, whether or
+	// not the agent's own sandbox was on.
+	if status, _ := e.Worktrees.Status(ctx, run.Worktree); strings.TrimSpace(status) != "" {
+		e.emit(run.ID, step.ID, "review.modified_files", map[string]any{"status": clip(status, 1000)})
+		if err := e.Worktrees.Reset(ctx, run.Worktree); err != nil {
+			return outcome{}, fmt.Errorf("the reviewer changed files and they could not be reverted: %w", err)
+		}
+		cr.independence += ", but it changed files; they were reverted"
+	}
 	v, ok := parseVerdict(cr.res.Summary)
 	if !ok {
 		st.Summary = "the reviewer did not return a verdict"
@@ -180,6 +200,12 @@ func (e *Engine) call(ctx context.Context, run *model.Run, wf *workflow.Workflow
 			lease.Release()
 			return callResult{}, fmt.Errorf("account %q uses provider %q, which this build has no backend for", lease.Account.ID, lease.Account.Provider)
 		}
+		if !spec.sandbox.Unrestricted {
+			if err := e.checkSandbox(ctx, run, backend, lease.Account, step); err != nil {
+				lease.Release()
+				return callResult{}, err
+			}
+		}
 		st.Account, st.Provider = lease.Account.ID, lease.Account.Provider
 		st.Attempts++
 		if err := e.save(run); err != nil {
@@ -242,6 +268,57 @@ func (e *Engine) call(ctx context.Context, run *model.Run, wf *workflow.Workflow
 		}
 	}
 }
+
+// checkSandbox asks a backend that can check whether the agent's sandbox works for this login. The answer
+// is remembered for the life of the process, so a broken sandbox is reported once, quickly, instead of
+// every agent run hanging.
+func (e *Engine) checkSandbox(ctx context.Context, run *model.Run, backend agent.Backend, account pool.Account, step workflow.Step) error {
+	pf, ok := backend.(agent.Preflighter)
+	if !ok {
+		return nil
+	}
+	e.pfMu.Lock()
+	defer e.pfMu.Unlock()
+	if e.pfDone == nil {
+		e.pfDone = map[string]error{}
+	}
+	err, seen := e.pfDone[account.ID]
+	if !seen {
+		env := sandbox.Env(e.environ(), step.Sandbox.Env, backend.AccountEnv(account))
+		err = pf.Preflight(ctx, account, run.Worktree, env)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		e.pfDone[account.ID] = err
+		e.emit(run.ID, step.ID, "sandbox.checked", map[string]any{"account": account.ID, "ok": err == nil, "detail": errText(err)})
+	}
+	if err != nil {
+		return &SandboxError{Account: account.ID, Cause: err}
+	}
+	return nil
+}
+
+func errText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// SandboxError means the agent's own sandbox cannot run for an account, and the user has not allowed
+// running without it.
+type SandboxError struct {
+	Account string
+	Cause   error
+}
+
+func (e *SandboxError) Error() string {
+	return fmt.Sprintf("the sandbox for account %q does not work: %v. Legatus will not run agents without a sandbox unless you say so: "+
+		"run with --no-sandbox (or set `sandbox: {mode: none}` on the step) to let the agent work with the full access of your user account, "+
+		"still inside the run's own worktree and with a scrubbed environment", e.Account, e.Cause)
+}
+
+func (e *SandboxError) Unwrap() error { return e.Cause }
 
 // lease picks an account for the step. A review asks for an independent one: another provider if there
 // is one, else another login of the same provider, else (and only then) the author's own login.
