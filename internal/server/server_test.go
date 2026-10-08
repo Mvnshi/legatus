@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -13,12 +14,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/agent"
 	"github.com/Mvnshi/legatus/internal/agent/fake"
 	"github.com/Mvnshi/legatus/internal/app"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/hub"
 	"github.com/Mvnshi/legatus/internal/pool"
 	"github.com/Mvnshi/legatus/internal/queue"
@@ -493,5 +496,148 @@ func TestServeRefusesToListenBeyondThisComputer(t *testing.T) {
 		if err := e.srv.Serve(context.Background(), addr, nil); err == nil || !strings.Contains(err.Error(), "only listens on this computer") {
 			t.Errorf("%s: %v", addr, err)
 		}
+	}
+}
+
+type stubIssues struct {
+	issue *github.Issue
+	err   error
+	asked []string
+}
+
+func (s *stubIssues) Issue(ctx context.Context, ref, dir string) (*github.Issue, error) {
+	s.asked = append(s.asked, ref+"|"+dir)
+	return s.issue, s.err
+}
+
+type stubPR struct {
+	calls []github.PROptions
+	mu    sync.Mutex
+}
+
+func (s *stubPR) OpenPR(ctx context.Context, o github.PROptions) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls = append(s.calls, o)
+	return "https://github.com/o/r/pull/77", nil
+}
+
+func (s *stubPR) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.calls)
+}
+
+func TestAnIssueBecomesATaskAndItsRunBecomesAPullRequest(t *testing.T) {
+	e := newEnv(t, nil)
+	issues := &stubIssues{issue: &github.Issue{
+		Ref: github.Ref{Owner: "o", Repo: "r", Number: 14}, Title: "Crash on empty input", Body: "It crashes.", Labels: []string{"bug"},
+	}}
+	prs := &stubPR{}
+	e.srv.GitHub = issues
+	e.app.Engine.GitHub = prs
+
+	code, data := e.do("POST", "/api/runs", map[string]any{"issue": "o/r#14", "repo": e.repo, "base": "main", "agent": "codex"})
+	if code != 201 {
+		t.Fatalf("submit: %d %s", code, data)
+	}
+	var created struct{ ID string }
+	json.Unmarshal(data, &created)
+	if len(issues.asked) != 1 || !strings.HasPrefix(issues.asked[0], "o/r#14|") {
+		t.Fatalf("the issue was asked for as %v", issues.asked)
+	}
+	e.waitStatus(created.ID, "succeeded")
+
+	_, data = e.do("GET", "/api/runs/"+created.ID, nil)
+	var detail struct {
+		Run struct {
+			Task struct {
+				Title, Prompt, Source string
+			}
+		}
+	}
+	json.Unmarshal(data, &detail)
+	if detail.Run.Task.Title != "Issue #14: Crash on empty input" || detail.Run.Task.Source != "github:o/r#14" ||
+		!strings.Contains(detail.Run.Task.Prompt, "<issue>\nIt crashes.\n</issue>") {
+		t.Fatalf("task = %+v", detail.Run.Task)
+	}
+
+	code, data = e.do("POST", "/api/runs/"+created.ID+"/pr", map[string]any{"draft": true})
+	if code != 200 || !strings.Contains(string(data), "pull/77") {
+		t.Fatalf("pr: %d %s", code, data)
+	}
+	if len(prs.calls) != 1 || !strings.HasPrefix(prs.calls[0].Body, "Closes o/r#14") || !prs.calls[0].Draft || prs.calls[0].Base != "main" {
+		t.Fatalf("pull request options = %+v", prs.calls)
+	}
+	_, data = e.do("GET", "/api/runs/"+created.ID, nil)
+	if !strings.Contains(string(data), `"pr_url":"https://github.com/o/r/pull/77"`) {
+		t.Fatalf("the run does not show its pull request: %s", data)
+	}
+}
+
+func TestAskingForAPullRequestUpFrontOpensItWhenTheRunSucceeds(t *testing.T) {
+	e := newEnv(t, nil)
+	prs := &stubPR{}
+	e.app.Engine.GitHub = prs
+	_, data := e.do("POST", "/api/runs", map[string]any{"prompt": "x", "repo": e.repo, "base": "main", "agent": "codex", "open_pr": "ready"})
+	var created struct{ ID string }
+	json.Unmarshal(data, &created)
+	e.waitStatus(created.ID, "succeeded")
+	deadline := time.Now().Add(20 * time.Second)
+	for prs.count() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if prs.count() != 1 || prs.calls[0].Draft {
+		t.Fatalf("expected one ready pull request, got %+v", prs.calls)
+	}
+
+	// Without the request nothing is pushed or published.
+	_, data = e.do("POST", "/api/runs", map[string]any{"prompt": "y", "repo": e.repo, "base": "main", "agent": "codex"})
+	var quiet struct{ ID string }
+	json.Unmarshal(data, &quiet)
+	e.waitStatus(quiet.ID, "succeeded")
+	time.Sleep(300 * time.Millisecond)
+	if prs.count() != 1 {
+		t.Fatal("a run that did not ask for a pull request published one")
+	}
+}
+
+func TestIssueAndPullRequestRequestsAreValidated(t *testing.T) {
+	e := newEnv(t, nil)
+	e.srv.GitHub = &stubIssues{err: errors.New("cannot read o/r#9999: Could not resolve to an Issue")}
+	for name, body := range map[string]map[string]any{
+		"an issue gh cannot read": {"issue": "o/r#9999", "repo": e.repo},
+		"a bad pull request mode": {"prompt": "x", "repo": e.repo, "open_pr": "yes"},
+		"nothing to do":           {"repo": e.repo},
+	} {
+		if code, data := e.do("POST", "/api/runs", body); code != 400 {
+			t.Errorf("%s: %d %s", name, code, data)
+		}
+	}
+	_, data := e.do("POST", "/api/runs", map[string]any{"issue": "o/r#9999", "repo": e.repo})
+	if !strings.Contains(string(data), "Could not resolve") {
+		t.Errorf("the reason was not passed on: %s", data)
+	}
+	if code, _ := e.do("POST", "/api/runs/nope/pr", map[string]any{}); code != 400 {
+		t.Errorf("a pull request for an unknown run: %d", code)
+	}
+}
+
+// The cockpit is plain JavaScript with no build step, so nothing else would catch a typo before a browser did.
+func TestTheCockpitScriptParses(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	data, err := uiFiles.ReadFile("ui/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(t.TempDir(), "app.js")
+	if err := os.WriteFile(file, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(node, "--check", file).CombinedOutput(); err != nil {
+		t.Fatalf("app.js does not parse:\n%s", out)
 	}
 }

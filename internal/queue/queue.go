@@ -240,6 +240,9 @@ func (s *Scheduler) runOne(id string) {
 	s.mu.Unlock()
 	cancel()
 
+	if err == nil && !userCanceled && s.ctx.Err() == nil {
+		s.openPullRequestIfAsked(id)
+	}
 	switch {
 	case userCanceled:
 		_ = s.Engine.MarkCanceled(context.Background(), id)
@@ -253,6 +256,19 @@ func (s *Scheduler) runOne(id string) {
 	}
 	if s.Hub != nil {
 		s.Hub.Notify(id)
+	}
+}
+
+// openPullRequestIfAsked opens the pull request for a run that succeeded and was submitted with a request
+// for one. A failure is recorded on the run's journal and does not change the run's result: the work is on
+// its branch either way, and the person can retry from the cockpit.
+func (s *Scheduler) openPullRequestIfAsked(id string) {
+	run, err := s.Engine.Store.Load(id)
+	if err != nil || run.Status != model.Succeeded || run.Task.OpenPR == "" || run.PRURL != "" {
+		return
+	}
+	if _, err := s.Engine.OpenPullRequest(s.ctx, id, run.Task.OpenPR != "ready"); err != nil {
+		return // OpenPullRequest has already written a pr.failed event
 	}
 }
 

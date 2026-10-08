@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/engine"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/model"
 	"github.com/Mvnshi/legatus/internal/workflow"
 )
@@ -30,6 +31,8 @@ func cmdRun(args []string, stdout, stderr io.Writer) int {
 	promptFile := fs.String("prompt-file", "", "read the task from a file (- for standard input)")
 	quiet := fs.Bool("quiet", false, "do not print progress")
 	noSandbox := fs.Bool("no-sandbox", false, "run agents without their own sandbox (they can reach what your user account can)")
+	issueRef := fs.String("issue", "", "work on a GitHub issue: owner/repo#12, its URL, or a number")
+	prMode := fs.String("pr", "", "when the run succeeds, push its branch and open a pull request: draft or ready")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: legatus run [flags] \"what to do\"")
 		fs.PrintDefaults()
@@ -52,8 +55,29 @@ func cmdRun(args []string, stdout, stderr io.Writer) int {
 		}
 		prompt = strings.TrimSpace(string(data))
 	}
+	if *prMode != "" && *prMode != "draft" && *prMode != "ready" {
+		fmt.Fprintln(stderr, "legatus: --pr must be draft or ready")
+		return 64
+	}
+	absRepo, err := filepath.Abs(*repo)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	title, source := "", ""
+	if *issueRef != "" {
+		issue, err := (&github.Client{}).Issue(context.Background(), *issueRef, absRepo)
+		if err != nil {
+			return fail(stderr, err)
+		}
+		title = fmt.Sprintf("Issue #%d: %s", issue.Ref.Number, issue.Title)
+		source = "github:" + issue.Ref.String()
+		if prompt != "" {
+			prompt += "\n\n"
+		}
+		prompt += github.TaskPrompt(issue)
+	}
 	if prompt == "" {
-		fmt.Fprintln(stderr, "legatus: say what to do, e.g. legatus run \"fix the failing login test\"")
+		fmt.Fprintln(stderr, "legatus: say what to do, e.g. legatus run \"fix the failing login test\", or give --issue")
 		return 64
 	}
 
@@ -88,10 +112,6 @@ func cmdRun(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "legatus: no accounts yet. Add the login you already use with:\n\n  legatus accounts add --id main --provider codex --home default\n\nor start a separate one with `legatus accounts add --id second --provider codex` then `legatus accounts login second`.")
 		return 1
 	}
-	absRepo, err := filepath.Abs(*repo)
-	if err != nil {
-		return fail(stderr, err)
-	}
 	if !*quiet {
 		a.Engine.OnEvent = func(ev model.Event) { printEvent(stdout, ev) }
 	}
@@ -99,7 +119,7 @@ func cmdRun(args []string, stdout, stderr io.Writer) int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	run, err := a.Engine.NewRun(ctx, model.Task{Prompt: prompt, Repo: absRepo, Base: *base}, wf)
+	run, err := a.Engine.NewRun(ctx, model.Task{Prompt: prompt, Title: title, Repo: absRepo, Base: *base, Source: source, OpenPR: *prMode}, wf)
 	if err != nil {
 		return fail(stderr, err)
 	}
@@ -145,6 +165,16 @@ func finishExecution(ctx context.Context, e *engine.Engine, id string, stdout, s
 	case model.Succeeded:
 		fmt.Fprintf(stdout, "Done. The work is on branch %s\n  worktree: %s\n  report:   %s\n", run.Branch, run.Worktree, filepath.Join(storeDir, "runs", run.ID, "evidence.md"))
 		fmt.Fprintf(stdout, "  review it: git -C \"%s\" log --oneline %s..HEAD\n", run.Worktree, shortSHA(run.BaseCommit))
+		if run.Task.OpenPR != "" && run.PRURL == "" {
+			url, err := e.OpenPullRequest(ctx, id, run.Task.OpenPR != "ready")
+			if err != nil {
+				fmt.Fprintf(stderr, "legatus: the work is done but the pull request could not be opened: %v\n  Try again with: legatus pr %s\n", err, id)
+				return 1
+			}
+			fmt.Fprintf(stdout, "  pull request: %s\n", url)
+		} else if run.PRURL != "" {
+			fmt.Fprintf(stdout, "  pull request: %s\n", run.PRURL)
+		}
 		return 0
 	case model.NeedsHuman:
 		fmt.Fprintf(stdout, "Needs a person: %s\n  branch %s, report %s\n", run.Error, run.Branch, filepath.Join(storeDir, "runs", run.ID, "evidence.md"))
@@ -324,4 +354,31 @@ func localTime(rfc string) string {
 		return t.Local().Format("Mon 15:04")
 	}
 	return rfc
+}
+
+// cmdPR turns a finished run into a pull request: it pushes the run's branch and opens the request with the
+// run's report as its description. It is the only place besides --pr and the cockpit that publishes anything.
+func cmdPR(args []string, stdout, stderr io.Writer) int {
+	fs := newFlags("pr", stderr)
+	root := fs.String("root", "", "where Legatus keeps its files")
+	draft := fs.Bool("draft", false, "open it as a draft")
+	if code, ok := parse(fs, args); !ok {
+		return code
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "Usage: legatus pr [-draft] <run id>")
+		return 64
+	}
+	a, ok := openApp(*root, stderr)
+	if !ok {
+		return 1
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	url, err := a.Engine.OpenPullRequest(ctx, fs.Arg(0), *draft)
+	if err != nil {
+		return fail(stderr, err)
+	}
+	fmt.Fprintln(stdout, url)
+	return 0
 }

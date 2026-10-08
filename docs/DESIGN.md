@@ -107,11 +107,19 @@ Two things only showed up under concurrency and are fixed: on Windows, replacing
 denied" for a moment while anything is reading it (the store retries), and a Retry that arrives while the
 worker is still finishing the run is queued behind it rather than dropped.
 
+## GitHub
+
+Everything goes through the user's own `gh`, so Legatus never holds a token. An issue becomes a task whose
+prompt fences the issue text off as untrusted (issues are written by strangers). Publishing is explicit and
+per run: `OpenPullRequest` pushes the branch to `origin`, opens the pull request with `evidence.md` as its
+description, records the address on the run, and is idempotent (a second call, or a branch that already has a
+pull request, returns the existing one). A run that needs a person is opened as a draft and never claims to
+close an issue.
+
 ## Roadmap
 
-1. Intake: GitHub issues and pull requests, then Jira and Linear; schedules.
-2. Opening pull requests from a finished run, with the report as the description.
-3. Usage probes (Codex reports rate limits) so the scheduler prefers the login with the most left.
-4. A container sandbox, so Windows does not depend on the agent's own sandbox.
-5. Safe access from another device (authenticated, encrypted), for a VPS or a phone away from home.
-6. An installer and a signed release.
+1. Intake that watches: GitHub issues carrying a label, then Jira and Linear; schedules.
+2. Usage probes (Codex reports rate limits) so the scheduler prefers the login with the most left.
+3. A container sandbox, so Windows does not depend on the agent's own sandbox.
+4. Safe access from another device (authenticated, encrypted), for a VPS or a phone away from home.
+5. An installer and a signed release.

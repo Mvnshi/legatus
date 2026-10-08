@@ -42,6 +42,20 @@ Useful flags: `--review` (independent review), `--agent codex|claude|any`, `--wo
 `--no-sandbox` (see [Sandboxing](#sandboxing)). `legatus runs`, `legatus show <run>`, `legatus resume <run>`,
 `legatus clean`.
 
+## From a GitHub issue to a pull request
+
+```text
+legatus run --issue Mvnshi/legatus#12 --review --pr draft --check "go test ./..."
+legatus pr <run>             # or open the pull request later, after you have looked at the branch
+```
+
+`--issue` reads the issue through your signed-in `gh` and gives it to the agent as the problem to solve; the
+issue text is fenced off and the agent is told not to take orders from it, because anyone can write an issue.
+`--pr` pushes the run's branch to `origin` and opens the pull request with the run's report as its description
+(and `Closes owner/repo#12` for an issue). Nothing is pushed or published unless you ask for it for that run,
+either with `--pr`, with `legatus pr`, or with the button in the cockpit, which asks you to confirm. A run that
+needs a person (the reviewer disagreed) only ever opens as a draft.
+
 ## The daemon and the cockpit
 
 `legatus run` works on one task in your terminal. To queue many, leave Legatus running:
@@ -111,6 +125,10 @@ The cockpit was used in a real browser (Chromium, Windows) against the daemon wi
 list, a run's live journal, report and diff, adding and switching logins, submitting a task from the form and
 watching it finish, and a phone-sized screen. It has not been tried on Firefox or Safari.
 
+Pull requests were tested with a scripted `gh` and a real local git remote (the push really happens; the
+`gh pr create` arguments and body are checked). Reading an issue was also checked once against real GitHub
+through the real `gh` (read-only). **No pull request has been opened on real GitHub yet.**
+
 Run for real on one Windows PC: **Codex CLI 0.162** completed a small task end to end through Legatus using an
 existing login (`--no-sandbox`), producing the branch, commit, check and report. The Codex event shapes the
 parser relies on were captured from that CLI.
@@ -142,7 +160,7 @@ and you sign in with the agent's own `login` command.
 
 ## Roadmap
 
-Not built yet: GitHub/Jira/Linear intake, schedules, opening pull requests, a container sandbox, usage probes
+Not built yet: Jira and Linear intake, watching GitHub for labelled issues, schedules, a container sandbox, usage probes
 so the scheduler prefers the login with the most left, reaching the daemon safely from another device, an
 installer. See [docs/DESIGN.md](docs/DESIGN.md).
 

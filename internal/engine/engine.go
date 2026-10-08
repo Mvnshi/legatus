@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/agent"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/model"
 	"github.com/Mvnshi/legatus/internal/pool"
 	"github.com/Mvnshi/legatus/internal/sandbox"
@@ -23,6 +24,11 @@ import (
 	"github.com/Mvnshi/legatus/internal/workflow"
 	"github.com/Mvnshi/legatus/internal/worktree"
 )
+
+// PROpener pushes a branch and opens a pull request. *github.Client is the real one.
+type PROpener interface {
+	OpenPR(ctx context.Context, o github.PROptions) (string, error)
+}
 
 // Engine runs workflows. Fields other than the first four are optional.
 type Engine struct {
@@ -40,6 +46,9 @@ type Engine struct {
 
 	AgentTimeout time.Duration // per attempt, when a step sets none; 30 minutes when zero
 	CheckTimeout time.Duration // per command, when a step sets none; 10 minutes when zero
+
+	// GitHub opens pull requests; the real gh-based client when nil.
+	GitHub PROpener
 
 	pfMu   sync.Mutex
 	pfDone map[string]error // sandbox check results by account, for this process

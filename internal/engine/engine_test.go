@@ -14,6 +14,7 @@ import (
 
 	"github.com/Mvnshi/legatus/internal/agent"
 	"github.com/Mvnshi/legatus/internal/agent/fake"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/model"
 	"github.com/Mvnshi/legatus/internal/pool"
 	"github.com/Mvnshi/legatus/internal/store"
@@ -671,5 +672,103 @@ func TestAReviewerThatTouchesFilesHasThemRevertedAndSaysSo(t *testing.T) {
 	}
 	if strings.Contains(committedFiles(t, run), "reviewer-was-here") {
 		t.Fatal("the reviewer's file was committed")
+	}
+}
+
+type stubPR struct {
+	calls []github.PROptions
+	err   error
+}
+
+func (s *stubPR) OpenPR(ctx context.Context, o github.PROptions) (string, error) {
+	s.calls = append(s.calls, o)
+	if s.err != nil {
+		return "", s.err
+	}
+	return "https://github.com/o/r/pull/9", nil
+}
+
+func TestAFinishedRunBecomesAPullRequestWithItsReportAsTheDescription(t *testing.T) {
+	h := newHarness(t, codexAccounts("a"), fake.New("codex", nil))
+	stub := &stubPR{}
+	h.eng.GitHub = stub
+	ctx := context.Background()
+	run, err := h.eng.NewRun(ctx, model.Task{Prompt: "fix it", Repo: h.repo, Base: "main", Source: "github:o/r#33"}, workflow.Default([]string{"git --version"}, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.eng.OpenPullRequest(ctx, run.ID, false); err == nil || !strings.Contains(err.Error(), "once it has succeeded") {
+		t.Fatalf("a run that has not run was given a pull request: %v", err)
+	}
+	if err := h.eng.Resume(ctx, run.ID); err != nil {
+		t.Fatal(err)
+	}
+	url, err := h.eng.OpenPullRequest(ctx, run.ID, true)
+	if err != nil || url != "https://github.com/o/r/pull/9" {
+		t.Fatalf("url %q, err %v", url, err)
+	}
+	if len(stub.calls) != 1 {
+		t.Fatalf("%d calls", len(stub.calls))
+	}
+	c := stub.calls[0]
+	if c.Branch != "legatus/"+run.ID || c.Base != "main" || !c.Draft || c.Title != "fix it" || c.Dir == "" {
+		t.Fatalf("options = %+v", c)
+	}
+	if !strings.HasPrefix(c.Body, "Closes o/r#33\n\n# fix it") || !strings.Contains(c.Body, "**succeeded**") {
+		t.Fatalf("body:\n%s", c.Body)
+	}
+	got, _ := h.store.Load(run.ID)
+	if got.PRURL != url || !hasEvent(h.events(got), "pr.opened") {
+		t.Fatalf("the pull request was not recorded: %+v", got.PRURL)
+	}
+	// Asking again returns the same one and does not push or create anything.
+	if again, err := h.eng.OpenPullRequest(ctx, run.ID, false); err != nil || again != url || len(stub.calls) != 1 {
+		t.Fatalf("second call: %q, %v, %d calls", again, err, len(stub.calls))
+	}
+}
+
+func TestPullRequestBasesAndNeedsHumanRunsAreDraft(t *testing.T) {
+	for in, want := range map[string]string{"": "", "HEAD": "", "main": "main", "release/1.2": "release/1.2", "a1b2c3d": "", "0123456789abcdef0123456789abcdef01234567": "", "bad branch": "", "--force": "--force"} {
+		if got := baseBranch(in); got != want {
+			t.Errorf("baseBranch(%q) = %q, want %q", in, got, want)
+		}
+	}
+	judge := fake.New("claude", reviewer(`{"verdict":"request_changes","summary":"still wrong","issues":["x"]}`))
+	accounts := append(codexAccounts("a"), pool.Account{ID: "c", Provider: "claude"})
+	h := newHarness(t, accounts, fake.New("codex", nil), judge)
+	stub := &stubPR{}
+	h.eng.GitHub = stub
+	run := h.run(workflow.Default(nil, true), "add notes")
+	if run.Status != model.NeedsHuman {
+		t.Fatalf("status %s", run.Status)
+	}
+	if _, err := h.eng.OpenPullRequest(context.Background(), run.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	if !stub.calls[0].Draft {
+		t.Fatal("a run a person has not agreed with must open as a draft")
+	}
+	if strings.Contains(stub.calls[0].Body, "Closes") {
+		t.Fatal("an unreviewed run must not claim to close an issue")
+	}
+}
+
+func TestAFailedPullRequestIsRecordedAndDoesNotChangeTheRun(t *testing.T) {
+	h := newHarness(t, codexAccounts("a"), fake.New("codex", nil))
+	h.eng.GitHub = &stubPR{err: errors.New("could not push legatus/x to origin: permission denied")}
+	run := h.run(workflow.Default(nil, false), "task")
+	if _, err := h.eng.OpenPullRequest(context.Background(), run.ID, false); err == nil || !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("err = %v", err)
+	}
+	got, _ := h.store.Load(run.ID)
+	if got.Status != model.Succeeded || got.PRURL != "" || !hasEvent(h.events(got), "pr.failed") {
+		t.Fatalf("status %s, pr %q", got.Status, got.PRURL)
+	}
+	failedRun := h.run(workflow.Default([]string{"git cat-file -e HEAD:never"}, false), "task two")
+	if failedRun.Status != model.Failed {
+		t.Skip("setup did not produce a failed run")
+	}
+	if _, err := h.eng.OpenPullRequest(context.Background(), failedRun.ID, false); err == nil {
+		t.Fatal("a failed run was given a pull request")
 	}
 }

@@ -185,13 +185,19 @@ func cmdQueue(args []string, stdout, stderr io.Writer) int {
 	review := fs.Bool("review", false, "have an independent agent review the change")
 	agentFlag := fs.String("agent", "any", "which agent: any, codex, claude")
 	noSandbox := fs.Bool("no-sandbox", false, "run agents without their own sandbox")
+	issueRef := fs.String("issue", "", "work on a GitHub issue: owner/repo#12, its URL, or a number")
+	prMode := fs.String("pr", "", "when the run succeeds, push its branch and open a pull request: draft or ready")
 	root := fs.String("root", "", "where Legatus keeps its files")
 	if code, ok := parse(fs, args); !ok {
 		return code
 	}
 	prompt := strings.TrimSpace(strings.Join(fs.Args(), " "))
-	if prompt == "" {
-		fmt.Fprintln(stderr, "legatus: say what to do, e.g. legatus queue \"fix the failing login test\"")
+	if prompt == "" && *issueRef == "" {
+		fmt.Fprintln(stderr, "legatus: say what to do, e.g. legatus queue \"fix the failing login test\", or give --issue")
+		return 64
+	}
+	if *prMode != "" && *prMode != "draft" && *prMode != "ready" {
+		fmt.Fprintln(stderr, "legatus: --pr must be draft or ready")
 		return 64
 	}
 	absRepo, err := filepath.Abs(*repo)
@@ -200,7 +206,7 @@ func cmdQueue(args []string, stdout, stderr io.Writer) int {
 	}
 	body := map[string]any{
 		"prompt": prompt, "repo": absRepo, "base": *base, "checks": []string(checks), "review": *review,
-		"agent": *agentFlag, "no_sandbox": *noSandbox,
+		"agent": *agentFlag, "no_sandbox": *noSandbox, "issue": *issueRef, "open_pr": *prMode,
 	}
 	if *wfPath != "" {
 		data, err := os.ReadFile(*wfPath)

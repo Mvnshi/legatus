@@ -39,7 +39,8 @@ type Task struct {
 	Repo      string    `json:"repo"`
 	Base      string    `json:"base"`
 	Workflow  string    `json:"workflow"`
-	Source    string    `json:"source,omitempty"` // e.g. "github:owner/repo#12"
+	Source    string    `json:"source,omitempty"`  // e.g. "github:owner/repo#12"
+	OpenPR    string    `json:"open_pr,omitempty"` // "draft" or "ready": open a pull request when the run succeeds
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -72,6 +73,7 @@ type Run struct {
 	Feedback   string         `json:"feedback,omitempty"`   // why the last check or review sent the run back
 	Retries    map[string]int `json:"retries,omitempty"`    // how often each check or review has sent the run back
 	Error      string         `json:"error,omitempty"`
+	PRURL      string         `json:"pr_url,omitempty"` // the pull request opened from this run, if any
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 }

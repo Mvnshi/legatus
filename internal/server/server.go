@@ -8,6 +8,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -21,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/app"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/hub"
 	"github.com/Mvnshi/legatus/internal/model"
 	"github.com/Mvnshi/legatus/internal/queue"
@@ -35,6 +37,13 @@ type Server struct {
 	Hub     *hub.Hub
 	Token   string
 	Version string
+	// GitHub reads issues; the real gh-based client when nil.
+	GitHub IssueReader
+}
+
+// IssueReader reads a GitHub issue. *github.Client is the real one.
+type IssueReader interface {
+	Issue(ctx context.Context, ref, dir string) (*github.Issue, error)
 }
 
 const maxBody = 1 << 20
@@ -54,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	api("GET /api/runs/{id}/diff", s.handleDiff)
 	api("POST /api/runs/{id}/cancel", s.handleCancel)
 	api("POST /api/runs/{id}/retry", s.handleRetry)
+	api("POST /api/runs/{id}/pr", s.handlePR)
 	api("GET /api/accounts", s.handleAccounts)
 	api("POST /api/accounts", s.handleAddAccount)
 	api("POST /api/accounts/{id}/enable", s.handleToggleAccount(false))
@@ -150,6 +160,8 @@ type runSummary struct {
 	CreatedAt time.Time     `json:"created_at"`
 	UpdatedAt time.Time     `json:"updated_at"`
 	WaitUntil *time.Time    `json:"wait_until,omitempty"`
+	PRURL     string        `json:"pr_url,omitempty"`
+	Source    string        `json:"source,omitempty"`
 	Current   int           `json:"current"`
 	Steps     []stepSummary `json:"steps"`
 }
@@ -157,7 +169,7 @@ type runSummary struct {
 func summarize(r *model.Run) runSummary {
 	out := runSummary{
 		ID: r.ID, Title: r.Task.Title, Status: string(r.Status), Repo: r.Task.Repo, Branch: r.Branch, Error: r.Error,
-		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, Current: r.Current,
+		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, Current: r.Current, PRURL: r.PRURL, Source: r.Task.Source,
 	}
 	if !r.WaitUntil.IsZero() {
 		t := r.WaitUntil
@@ -264,6 +276,8 @@ type submitRequest struct {
 	Agent     string   `json:"agent"`
 	NoSandbox bool     `json:"no_sandbox"`
 	Workflow  string   `json:"workflow"`
+	Issue     string   `json:"issue"`   // a GitHub issue to work on: owner/repo#12, its URL, or a number
+	OpenPR    string   `json:"open_pr"` // "", "draft" or "ready": open a pull request when the run succeeds
 }
 
 func (s *Server) handleSubmit(w http.ResponseWriter, r *http.Request) {
@@ -271,12 +285,37 @@ func (s *Server) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	if strings.TrimSpace(req.Prompt) == "" {
-		writeErr(w, 400, "say what to do")
-		return
-	}
 	if strings.TrimSpace(req.Repo) == "" {
 		writeErr(w, 400, "choose a repository")
+		return
+	}
+	if req.OpenPR != "" && req.OpenPR != "draft" && req.OpenPR != "ready" {
+		writeErr(w, 400, "open_pr must be draft or ready")
+		return
+	}
+	source := ""
+	if strings.TrimSpace(req.Issue) != "" {
+		var reader IssueReader = s.GitHub
+		if reader == nil {
+			reader = &github.Client{}
+		}
+		issue, err := reader.Issue(r.Context(), req.Issue, req.Repo)
+		if err != nil {
+			writeErr(w, 400, err.Error())
+			return
+		}
+		source = "github:" + issue.Ref.String()
+		if strings.TrimSpace(req.Title) == "" {
+			req.Title = fmt.Sprintf("Issue #%d: %s", issue.Ref.Number, issue.Title)
+		}
+		if strings.TrimSpace(req.Prompt) != "" {
+			req.Prompt = strings.TrimSpace(req.Prompt) + "\n\n" + github.TaskPrompt(issue)
+		} else {
+			req.Prompt = github.TaskPrompt(issue)
+		}
+	}
+	if strings.TrimSpace(req.Prompt) == "" {
+		writeErr(w, 400, "say what to do, or give an issue")
 		return
 	}
 	var wf *workflow.Workflow
@@ -311,7 +350,9 @@ func (s *Server) handleSubmit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	run, err := s.Sched.Submit(r.Context(), model.Task{Prompt: req.Prompt, Title: req.Title, Repo: req.Repo, Base: req.Base}, wf)
+	run, err := s.Sched.Submit(r.Context(), model.Task{
+		Prompt: req.Prompt, Title: req.Title, Repo: req.Repo, Base: req.Base, Source: source, OpenPR: req.OpenPR,
+	}, wf)
 	if err != nil {
 		writeErr(w, 400, err.Error())
 		return
@@ -333,6 +374,22 @@ func (s *Server) handleRetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (s *Server) handlePR(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Draft bool `json:"draft"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	url, err := s.App.Engine.OpenPullRequest(r.Context(), r.PathValue("id"), req.Draft)
+	if err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	s.Hub.Notify(r.PathValue("id"))
+	writeJSON(w, 200, map[string]string{"url": url})
 }
 
 const maxDiff = 400 << 10

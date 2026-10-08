@@ -248,7 +248,12 @@
   // ---------------------------------------------------------------- new task
   function openNewTask() {
     if (document.getElementById('drawer')) return;
-    const prompt = h('textarea', { id: 'f-prompt', placeholder: 'e.g. Fix the failing login test and add a test for the empty password case', required: true });
+    const prompt = h('textarea', { id: 'f-prompt', placeholder: 'e.g. Fix the failing login test and add a test for the empty password case' });
+    const issue = h('input', { id: 'f-issue', placeholder: 'owner/repo#12, an issue address, or just a number' });
+    const prMode = h('select', { id: 'f-pr' },
+      h('option', { value: '', text: 'No, I will look at it first' }),
+      h('option', { value: 'draft', text: 'Open a draft pull request' }),
+      h('option', { value: 'ready', text: 'Open a pull request' }));
     const repo = h('input', { id: 'f-repo', list: 'repos', value: store.get('legatus-repo') || (S.state && S.state.recent_repos[0]) || '', placeholder: 'C:\\code\\my-app  or  /home/me/my-app', required: true });
     const repos = h('datalist', { id: 'repos' }, ((S.state && S.state.recent_repos) || []).map((r) => h('option', { value: r })));
     const base = h('input', { id: 'f-base', value: 'HEAD', placeholder: 'main' });
@@ -263,10 +268,12 @@
       err.replaceChildren();
       submit.disabled = true;
       try {
+        if (!prompt.value.trim() && !issue.value.trim()) throw new Error('Say what to do, or give a GitHub issue.');
         store.set('legatus-repo', repo.value.trim());
         const run = await api('/api/runs', { method: 'POST', body: {
           prompt: prompt.value, repo: repo.value.trim(), base: base.value.trim() || 'HEAD',
           checks: checks.value.split('\n'), review: review.checked, agent: agent.value, no_sandbox: nosb.checked,
+          issue: issue.value.trim(), open_pr: prMode.value,
         } });
         close();
         location.hash = '#/run/' + run.id;
@@ -277,11 +284,15 @@
       }
     } },
       h('div', { class: 'field' }, h('label', { for: 'f-prompt', text: 'What should be done?' }), prompt),
+      h('div', { class: 'field' }, h('label', { for: 'f-issue', text: 'Or start from a GitHub issue (optional)' }), issue,
+        h('small', { class: 'muted', text: 'Uses your signed-in gh. The issue text is given to the agent as the problem to solve, not as orders.' })),
       h('div', { class: 'field' }, h('label', { for: 'f-repo', text: 'Repository (a folder on this computer)' }), repo, repos),
       h('div', { class: 'field' }, h('label', { for: 'f-checks', text: 'Checks that must pass (optional)' }), checks),
       h('div', { class: 'row' },
         h('div', { class: 'field', style: 'flex:1' }, h('label', { for: 'f-agent', text: 'Agent' }), agent),
         h('div', { class: 'field', style: 'flex:1' }, h('label', { for: 'f-base', text: 'Start from' }), base)),
+      h('div', { class: 'field' }, h('label', { for: 'f-pr', text: 'When it succeeds, publish it?' }), prMode,
+        h('small', { class: 'muted', text: 'Publishing pushes the run’s branch to your repository’s origin and opens the pull request.' })),
       h('label', { class: 'check' }, review, h('span', {}, 'Have an independent agent review it', h('small', { text: 'A different provider if you have one, otherwise a different login. It can read but never change the code.' }))),
       h('label', { class: 'check' }, nosb, h('span', {}, 'Run without the agent’s own sandbox', h('small', { text: 'Only if the sandbox will not start on this computer. The agent can then reach anything your user account can.' }))),
       err,
@@ -328,6 +339,8 @@
       case 'run.needs_human': return ['Needs a person: ' + cut(s('reason'), 300), 'k-warn'];
       case 'run.failed': return ['Run FAILED: ' + cut(s('error'), 300), 'k-bad'];
       case 'run.canceled': return ['Run canceled', 'k-warn'];
+      case 'pr.opened': return ['Pull request opened' + (d.draft ? ' (draft)' : '') + ': ' + s('url'), 'k-ok'];
+      case 'pr.failed': return ['Could not open the pull request: ' + cut(s('error'), 300), 'k-bad'];
       default: return null;
     }
   }
@@ -414,16 +427,19 @@
     function drawHead() {
       const r = run;
       const canCancel = ACTIVE.has(r.status);
+      const canPR = (r.status === 'succeeded' || r.status === 'needs_human') && !r.pr_url;
       const canRetry = r.status === 'failed' || r.status === 'needs_human' || r.status === 'canceled';
       put(head,
         h('a', { href: '#/', class: 'muted', text: '← All runs' }),
         h('div', { class: 'row between' }, h('h1', { text: r.title }), h('span', { class: 'badge s-' + r.status, text: label(r.status) })),
         h('div', { class: 'muted mono' }, r.repo, ' · ', r.branch),
+        r.pr_url && /^https:\/\//.test(r.pr_url) ? h('div', {}, h('a', { href: r.pr_url, target: '_blank', rel: 'noopener noreferrer', text: 'Pull request ↗' })) : null,
         r.status === 'waiting_capacity' && r.wait_until ? h('div', { class: 'warnbox' }, 'Every login is at its usage limit. Continuing ', untilSpan(r.wait_until), '.') : null,
         r.error && (r.status === 'failed' || r.status === 'needs_human') ? h('div', { class: 'errbox', text: r.error }) : null,
         h('div', { class: 'row' },
           canCancel ? h('button', { class: 'danger', onclick: () => act('cancel', 'Canceled'), text: 'Cancel' }) : null,
-          canRetry ? h('button', { onclick: () => act('retry', 'Back in line'), text: 'Try again' }) : null));
+          canRetry ? h('button', { onclick: () => act('retry', 'Back in line'), text: 'Try again' }) : null,
+          canPR ? h('button', { class: r.status === 'succeeded' ? 'primary' : '', onclick: () => openPR(r), text: r.status === 'succeeded' ? 'Open pull request' : 'Open as a draft pull request' }) : null));
       stepsBox.replaceChildren(h('div', { class: 'tablewrap' }, h('table', {},
         h('thead', {}, h('tr', {}, ['Step', 'Result', 'Login', 'Tries', 'Detail'].map((t) => h('th', { text: t })))),
         h('tbody', {}, r.steps.map((s) => h('tr', {},
@@ -432,6 +448,17 @@
           h('td', { text: s.account || '–' }),
           h('td', { text: String(s.attempts) }),
           h('td', { class: 'muted', text: s.summary || '' })))))));
+    }
+    async function openPR(r) {
+      const draft = r.status !== 'succeeded';
+      if (!confirm('Push the branch ' + r.branch + ' to your repository’s origin and open ' + (draft ? 'a draft ' : 'a ') + 'pull request with this run’s report as its description?')) return;
+      try {
+        const out = await api('/api/runs/' + id + '/pr', { method: 'POST', body: { draft } });
+        toast('Pull request opened');
+        if (run) run.pr_url = out.url;
+        drawHead();
+        scheduleRefresh();
+      } catch (e) { toast(e.message, true); }
     }
     async function act(what, ok) {
       try { await api('/api/runs/' + id + '/' + what, { method: 'POST', body: {} }); toast(ok); scheduleRefresh(); }
