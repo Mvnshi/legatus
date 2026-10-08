@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Mvnshi/legatus/internal/agent"
 	"github.com/Mvnshi/legatus/internal/agent/claude"
@@ -98,10 +99,72 @@ func (a *App) SaveAccounts() error {
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
 	}
-	return os.Rename(tmp, a.accountsFile())
+	return store.RenameReplace(tmp, a.accountsFile())
 }
 
 // AccountHome is the default configuration directory for an account created by Legatus.
 func (a *App) AccountHome(provider, id string) string {
 	return filepath.Join(a.Root, "accounts", provider+"-"+id)
+}
+
+var accountID = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
+
+// ValidAccountID reports whether name can be used as an account id.
+func ValidAccountID(name string) bool { return accountID.MatchString(name) }
+
+// AddAccount registers a login. home is "" for a new folder Legatus creates, "default" for the login the
+// agent already has on this computer, or the path of an existing folder.
+func (a *App) AddAccount(id, provider, home, label string, max int) (pool.Account, error) {
+	if !ValidAccountID(id) {
+		return pool.Account{}, errors.New("the account name must be 1-32 lowercase letters, digits, - or _")
+	}
+	if provider != "codex" && provider != "claude" {
+		return pool.Account{}, errors.New("the provider must be codex or claude")
+	}
+	if max < 1 {
+		return pool.Account{}, errors.New("an account must allow at least 1 task at a time")
+	}
+	for _, s := range a.Pool.Snapshots() {
+		if s.ID == id {
+			return pool.Account{}, fmt.Errorf("an account named %q already exists", id)
+		}
+	}
+	dir := home
+	switch home {
+	case "":
+		dir = a.AccountHome(provider, id)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return pool.Account{}, err
+		}
+	case "default":
+		dir = ""
+	default:
+		if err := os.MkdirAll(home, 0o700); err != nil {
+			return pool.Account{}, err
+		}
+	}
+	acct := pool.Account{ID: id, Provider: provider, Label: label, Home: dir, MaxConcurrent: max}
+	if err := a.Pool.Add(acct); err != nil {
+		return pool.Account{}, err
+	}
+	return acct, a.SaveAccounts()
+}
+
+// RemoveAccount forgets a login. Its folder is left alone.
+func (a *App) RemoveAccount(id string) error {
+	for _, s := range a.Pool.Snapshots() {
+		if s.ID == id {
+			a.Pool.Remove(id)
+			return a.SaveAccounts()
+		}
+	}
+	return fmt.Errorf("no account named %q", id)
+}
+
+// SetAccountDisabled turns a login off or on.
+func (a *App) SetAccountDisabled(id string, disabled bool) error {
+	if !a.Pool.SetDisabled(id, disabled) {
+		return fmt.Errorf("no account named %q", id)
+	}
+	return a.SaveAccounts()
 }

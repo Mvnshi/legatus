@@ -17,6 +17,9 @@ const usage = `Legatus runs coding agents in parallel on your own machine and ne
 
 Usage:
   legatus run [flags] "what to do"     run one task through a workflow, in this repository
+  legatus serve                        run the daemon: a queue, many runs at once, and the web cockpit
+  legatus open                         open the cockpit in your browser
+  legatus queue "what to do"           add a task to the running daemon
   legatus resume <run>                 continue a run that was interrupted
   legatus runs                         list runs
   legatus show <run>                   show a run and its evidence report
@@ -60,6 +63,12 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return cmdDemo(rest, stdout, stderr)
 	case "clean":
 		return cmdClean(rest, stdout, stderr)
+	case "serve":
+		return cmdServe(rest, stdout, stderr)
+	case "open":
+		return cmdOpen(rest, stdout, stderr)
+	case "queue":
+		return cmdQueue(rest, stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "legatus: unknown command %q\n\n%s", cmd, usage)
 	return 64

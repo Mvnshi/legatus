@@ -7,14 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
-	"github.com/Mvnshi/legatus/internal/agent"
-	"github.com/Mvnshi/legatus/internal/agent/fake"
-	"github.com/Mvnshi/legatus/internal/app"
 	"github.com/Mvnshi/legatus/internal/engine"
 	"github.com/Mvnshi/legatus/internal/model"
-	"github.com/Mvnshi/legatus/internal/pool"
 	"github.com/Mvnshi/legatus/internal/workflow"
 )
 
@@ -39,31 +34,10 @@ func cmdDemo(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 
-	author := fake.New("codex", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
-		if req.Account.ID == "work-1" {
-			emit(agent.Event{Kind: agent.Tool, Text: "write half-done.txt"})
-			_ = os.WriteFile(filepath.Join(req.Dir, "half-done.txt"), []byte("the first login got this far\n"), 0o600)
-			return agent.Result{}, &agent.LimitError{ResetAt: time.Now().Add(3 * time.Hour), Message: "You've hit your usage limit."}
-		}
-		emit(agent.Event{Kind: agent.Tool, Text: "write feature.txt"})
-		_ = os.WriteFile(filepath.Join(req.Dir, "feature.txt"), []byte("finished by "+req.Account.ID+"\n"), 0o600)
-		emit(agent.Event{Kind: agent.Message, Text: "Finished the feature and kept the first login's half-done work."})
-		return agent.Result{Summary: "added feature.txt, building on half-done.txt"}, nil
-	})
-	reviewer := fake.New("claude", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
-		return agent.Result{Summary: "The change matches the task.\n" + `{"verdict":"approve","summary":"matches the task","issues":[]}`}, nil
-	})
-	a, err := app.Open(filepath.Join(tmp, "legatus"), app.Options{Backends: map[string]agent.Backend{"codex": author, "claude": reviewer}})
+	a, err := demoApp(tmp, 0)
 	if err != nil {
 		return fail(stderr, err)
 	}
-	for _, acct := range []pool.Account{
-		{ID: "work-1", Provider: "codex"}, {ID: "work-2", Provider: "codex"}, {ID: "second-opinion", Provider: "claude"},
-	} {
-		_ = a.Pool.Add(acct)
-	}
-	a.Pool.SetUsage("work-1", 100) // make the first login the first choice, so the demo is repeatable
-	a.Pool.SetUsage("work-2", 50)
 	a.Engine.OnEvent = func(ev model.Event) { printEvent(stdout, ev) }
 
 	fmt.Fprintln(stdout, "Legatus demo: stand-in agents, nothing real is called.")

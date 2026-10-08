@@ -93,6 +93,22 @@ func (m *Manager) run(ctx context.Context, dir string, args ...string) (string, 
 	return "", lastErr
 }
 
+// Resolve turns a branch, tag or commit name into the commit it points at right now.
+func (m *Manager) Resolve(ctx context.Context, repo, ref string) (string, error) {
+	repo, err := filepath.Abs(repo)
+	if err != nil {
+		return "", err
+	}
+	if ref == "" {
+		ref = "HEAD"
+	}
+	out, err := m.run(ctx, repo, "rev-parse", "--verify", "--quiet", ref+"^{commit}")
+	if err != nil {
+		return "", fmt.Errorf("%s is not a git repository with a commit named %q", repo, ref)
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // Create adds a worktree at dir on a new branch started from base.
 func (m *Manager) Create(ctx context.Context, repo, base, branch, dir string) error {
 	repo, err := filepath.Abs(repo)
@@ -163,6 +179,26 @@ func (m *Manager) Diff(ctx context.Context, dir, base string, maxBytes int) (str
 	}
 	if maxBytes > 0 && len(out) > maxBytes {
 		out = out[:maxBytes] + "\n... (diff cut)\n"
+	}
+	return out, nil
+}
+
+// Patch is the patch of what is committed or tracked-and-changed against base, cut at maxBytes. Unlike Diff
+// it only reads: it does not touch the index, so it is safe to call while an agent is working in the
+// worktree.
+func (m *Manager) Patch(ctx context.Context, dir, base string, maxBytes int) (string, error) {
+	if base == "" {
+		base = "HEAD"
+	}
+	if _, err := os.Stat(dir); err != nil {
+		return "", err
+	}
+	out, err := m.run(ctx, dir, "diff", "--no-ext-diff", "--stat", "--patch", base)
+	if err != nil {
+		return "", err
+	}
+	if maxBytes > 0 && len(out) > maxBytes {
+		out = out[:maxBytes] + "\n... (cut)\n"
 	}
 	return out, nil
 }

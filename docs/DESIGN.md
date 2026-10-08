@@ -12,7 +12,10 @@ review, secrets that were removed) is written to a report next to the branch.
 
 ```text
 cmd/legatus          the program
-internal/cli         commands: run, resume, runs, show, accounts, clean, doctor, demo
+internal/cli         commands: run, serve, open, queue, resume, runs, show, accounts, clean, doctor, demo
+internal/queue       the line of runs, workers, cancel, retry, resume after a restart
+internal/hub         "something changed" notifications for live views
+internal/server      JSON API, event streams and the embedded web cockpit (server/ui)
 internal/app         where files live, saved accounts, wiring
 internal/engine      walks a run through its workflow (steps, limits, review, evidence)
 internal/pool        accounts, leases, limits, scheduling
@@ -71,7 +74,7 @@ Facts below come from Cezar's README, site and public issues in October 2026; it
 | Agents | Claude Code, Codex, Copilot CLI, OpenCode, Cursor, Junie, Pi | Codex, Claude Code (more via the Backend interface) |
 | Parallel runs in worktrees | yes (issue #1301: lock failure on parallel create) | yes; creation is serialised per repo, tested with 12 at once |
 | Usage limits | auto-resume exists; #1300: remaining workflow steps not continued | login pool, continue on another login, wait for reset, finish the workflow |
-| Cockpit, phone access | yes | not yet |
+| Cockpit, phone access | yes | yes, a basic one (runs, live journal, report, diff, logins, new task; phone-sized screens work) |
 | GitHub / Jira / Linear, schedules | yes | not yet |
 | Review of the result | PRs await a human | independent read-only agent review, then a human |
 | Sandboxing | worktree isolation | worktree + agent sandbox checked first + scrubbed environment + redaction |
@@ -80,12 +83,35 @@ Facts below come from Cezar's README, site and public issues in October 2026; it
 Where Cezar is ahead (cockpit, trackers, schedules, breadth of agents, maturity) the plan is to catch up on
 the parts people use, not to copy its code. The wedge is the usage-limit, Windows, review and sandboxing rows.
 
+## The daemon
+
+`legatus serve` owns the Legatus directory. `internal/queue` keeps a line of waiting runs and a fixed number of
+workers (default 6; the account pool is the real limiter on agent work). On start it resumes every run that was
+queued, running or waiting for capacity, oldest first. A run's worktree is created when it starts, not when it
+is queued, and its base commit is pinned when it is submitted, so a task means the same commit however long it
+waits. Cancel removes a queued run at once or interrupts a working one; Retry puts a failed, cancelled or
+needs-a-person run back in line from the step that stopped it, keeping the work already on its branch.
+
+`internal/hub` carries no data, only "something changed": a listener takes a channel, reads the journal on
+disk, and waits on the channel. The journal is the single source of truth, so live views cannot miss or repeat
+an event. The report is written before the final status is saved, so nothing shows a finished run without it.
+
+`internal/server` is the JSON API, two server-sent-event streams and the cockpit (plain JavaScript, no build
+step, embedded in the binary). It is loopback-only by design: requests must name a loopback host (against DNS
+rebinding), must not come from another origin, and must carry the key from `<home>/token`. The cockpit's
+content policy allows only its own scripts and styles, and it builds every element with DOM calls, never from
+strings, because agent output is untrusted text. The key reaches the page in the URL fragment, which browsers
+do not send to servers.
+
+Two things only showed up under concurrency and are fixed: on Windows, replacing `run.json` fails with "access
+denied" for a moment while anything is reading it (the store retries), and a Retry that arrives while the
+worker is still finishing the run is queued behind it rather than dropped.
+
 ## Roadmap
 
-1. A daemon that owns the queue, so runs can be added while others run and survive restarts.
-2. A web cockpit (live event stream, accounts and their limits, the report) served by that daemon.
-3. Intake: GitHub issues and pull requests, then Jira and Linear; schedules.
-4. Opening pull requests from a finished run, with the report as the description.
-5. Usage probes (Codex reports rate limits) so the scheduler prefers the login with the most left.
-6. A container sandbox, so Windows does not depend on the agent's own sandbox.
-7. An installer and a signed release.
+1. Intake: GitHub issues and pull requests, then Jira and Linear; schedules.
+2. Opening pull requests from a finished run, with the report as the description.
+3. Usage probes (Codex reports rate limits) so the scheduler prefers the login with the most left.
+4. A container sandbox, so Windows does not depend on the agent's own sandbox.
+5. Safe access from another device (authenticated, encrypted), for a VPS or a phone away from home.
+6. An installer and a signed release.

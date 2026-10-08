@@ -129,10 +129,9 @@ func (e *Engine) NewRun(ctx context.Context, task model.Task, wf *workflow.Workf
 	}
 	branch := "legatus/" + id
 	dir := filepath.Join(e.DataDir, "worktrees", id)
-	if err := e.Worktrees.Create(ctx, task.Repo, task.Base, branch, dir); err != nil {
-		return nil, err
-	}
-	head, err := e.Worktrees.Head(ctx, dir)
+	// The base is pinned now, so the task means the same commit however long it waits in the queue. The
+	// worktree itself is created when the run starts, so a long queue does not fill the disk.
+	head, err := e.Worktrees.Resolve(ctx, task.Repo, task.Base)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +201,18 @@ func (e *Engine) Execute(ctx context.Context, id string, wf *workflow.Workflow) 
 	run.WaitUntil = time.Time{}
 	if err := e.save(run); err != nil {
 		return err
+	}
+	if _, err := os.Stat(run.Worktree); errors.Is(err, os.ErrNotExist) {
+		if err := e.Worktrees.Create(ctx, run.Task.Repo, run.BaseCommit, run.Branch, run.Worktree); err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			run.Status = model.Failed
+			run.Error = "could not create the worktree: " + err.Error()
+			e.emit(id, "", "run.failed", map[string]any{"error": run.Error})
+			return e.finish(ctx, run, wf)
+		}
+		e.emit(id, "", "worktree.created", map[string]any{"path": run.Worktree})
 	}
 	if run.Current == 0 && run.Steps[0].Attempts == 0 {
 		e.emit(id, "", "run.started", nil)
@@ -297,12 +308,14 @@ func (e *Engine) Execute(ctx context.Context, id string, wf *workflow.Workflow) 
 	return e.finish(ctx, run, wf)
 }
 
-// finish saves the final state and writes the evidence report.
+// finish writes the evidence report and then saves the final state. In that order, so a person watching
+// never sees a finished run whose report is not there yet.
 func (e *Engine) finish(ctx context.Context, run *model.Run, wf *workflow.Workflow) error {
+	evidenceErr := e.writeEvidence(ctx, run, wf)
 	if err := e.save(run); err != nil {
 		return err
 	}
-	return e.writeEvidence(ctx, run, wf)
+	return evidenceErr
 }
 
 // saveWorkflow keeps the workflow with the run, so the run can be resumed without being told it again.
@@ -334,4 +347,60 @@ func (e *Engine) Resume(ctx context.Context, id string) error {
 		return err
 	}
 	return e.Execute(ctx, id, wf)
+}
+
+// MarkCanceled ends a run that has not finished because a person cancelled it. The branch and anything
+// committed on it stay; the worktree is left for inspection (legatus clean removes it).
+func (e *Engine) MarkCanceled(ctx context.Context, id string) error {
+	run, err := e.Store.Load(id)
+	if err != nil {
+		return err
+	}
+	if run.Status.Terminal() {
+		return nil
+	}
+	run.Status = model.Canceled
+	run.Error = "canceled"
+	run.WaitUntil = time.Time{}
+	if run.Current < len(run.Steps) && run.Steps[run.Current].Status == model.Running {
+		run.Steps[run.Current].Status = model.Canceled
+		run.Steps[run.Current].EndedAt = e.now().UTC()
+	}
+	e.emit(id, "", "run.canceled", nil)
+	wf, werr := e.LoadWorkflow(id)
+	if werr != nil {
+		return e.save(run)
+	}
+	return e.finish(ctx, run, wf)
+}
+
+// Requeue puts a failed, cancelled or person-needed run back in line to continue from the step that
+// stopped it. Work already committed on its branch is kept.
+func (e *Engine) Requeue(id string) error {
+	run, err := e.Store.Load(id)
+	if err != nil {
+		return err
+	}
+	switch run.Status {
+	case model.Failed, model.NeedsHuman, model.Canceled:
+	default:
+		return fmt.Errorf("run %s is %s; only a failed, cancelled or needs-a-person run can be retried", id, run.Status)
+	}
+	if run.Current >= len(run.Steps) {
+		run.Current = len(run.Steps) - 1
+	}
+	for i := run.Current; i < len(run.Steps); i++ {
+		run.Steps[i].Status = model.Pending
+		run.Steps[i].Error = ""
+		run.Steps[i].EndedAt = time.Time{}
+	}
+	run.Status = model.Queued
+	run.Error = ""
+	run.WaitUntil = time.Time{}
+	run.Retries = nil
+	if err := e.save(run); err != nil {
+		return err
+	}
+	e.emit(id, run.Steps[run.Current].ID, "run.requeued", nil)
+	return nil
 }

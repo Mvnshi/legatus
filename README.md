@@ -42,6 +42,27 @@ Useful flags: `--review` (independent review), `--agent codex|claude|any`, `--wo
 `--no-sandbox` (see [Sandboxing](#sandboxing)). `legatus runs`, `legatus show <run>`, `legatus resume <run>`,
 `legatus clean`.
 
+## The daemon and the cockpit
+
+`legatus run` works on one task in your terminal. To queue many, leave Legatus running:
+
+```text
+legatus serve                 # the daemon: a queue, several runs at once, survives restarts
+legatus open                  # the web cockpit, in your browser
+legatus queue "add input validation to the signup form" --check "npm test" --review
+legatus serve --demo          # try the cockpit with stand-in agents and nothing installed
+```
+
+The cockpit shows every run with its steps and which login did what, a live journal, the report, the diff,
+and your logins with their limits and a countdown to each reset. You can start, cancel and retry tasks and
+add logins from it, and it works on a phone-sized screen. Runs that were not finished when the daemon stopped
+continue the next time it starts.
+
+It listens only on this computer. Every request needs a secret key kept in a file only you can read, and
+requests that name any other host are refused (so a web page cannot reach it). Whoever has the key can have
+agents work in any repository on this machine, so it is not for sharing. Reaching it from another device needs
+a tunnel you set up yourself; Legatus has no login or encryption for that yet.
+
 A run's branch is `legatus/<run id>`. The report is `evidence.md` in the run's folder; it lists which login did
 what, the check results, the reviewer's verdict, every usage limit that was hit, anything removed from prompts,
 and the changed files.
@@ -83,7 +104,12 @@ moves fast, so check before quoting this):
 Tested automatically (stand-in agents, real git): runs and workflows, worktrees (12 created at once without
 lock errors), the account pool and scheduler, limit handling and waiting for a reset, check feedback,
 independent review and its fallbacks, redaction and environment scrubbing, cancel and resume, nine runs at
-once over three logins, the command line.
+once over three logins, the queue (worker limits, cancel, retry, resuming after a restart), the HTTP API and
+its security checks (host, origin, key, content policy), live streams, the command line.
+
+The cockpit was used in a real browser (Chromium, Windows) against the daemon with stand-in agents: the run
+list, a run's live journal, report and diff, adding and switching logins, submitting a task from the form and
+watching it finish, and a phone-sized screen. It has not been tried on Firefox or Safari.
 
 Run for real on one Windows PC: **Codex CLI 0.162** completed a small task end to end through Legatus using an
 existing login (`--no-sandbox`), producing the branch, commit, check and report. The Codex event shapes the
@@ -116,9 +142,9 @@ and you sign in with the agent's own `login` command.
 
 ## Roadmap
 
-Not built yet: a daemon with a queue and a web cockpit, GitHub/Jira/Linear intake, schedules, opening pull
-requests, a container sandbox, usage probes so the scheduler prefers the login with the most left, an installer.
-See [docs/DESIGN.md](docs/DESIGN.md).
+Not built yet: GitHub/Jira/Linear intake, schedules, opening pull requests, a container sandbox, usage probes
+so the scheduler prefers the login with the most left, reaching the daemon safely from another device, an
+installer. See [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Develop
 

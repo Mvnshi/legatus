@@ -87,6 +87,7 @@ func (e *Engine) reviewStep(ctx context.Context, run *model.Run, wf *workflow.Wo
 		return outcome{}, err
 	}
 	st := &run.Steps[idx]
+	reverted := false
 	// A reviewer judges the change; it never gets to alter it. Whatever it touched is reverted, whether or
 	// not the agent's own sandbox was on.
 	if status, _ := e.Worktrees.Status(ctx, run.Worktree); strings.TrimSpace(status) != "" {
@@ -94,7 +95,7 @@ func (e *Engine) reviewStep(ctx context.Context, run *model.Run, wf *workflow.Wo
 		if err := e.Worktrees.Reset(ctx, run.Worktree); err != nil {
 			return outcome{}, fmt.Errorf("the reviewer changed files and they could not be reverted: %w", err)
 		}
-		cr.independence += ", but it changed files; they were reverted"
+		reverted = true
 	}
 	v, ok := parseVerdict(cr.res.Summary)
 	if !ok {
@@ -102,7 +103,11 @@ func (e *Engine) reviewStep(ctx context.Context, run *model.Run, wf *workflow.Wo
 		e.emit(run.ID, step.ID, "review.no_verdict", map[string]any{"output": clip(cr.res.Summary, 1500)})
 		return outcome{kind: outHuman, message: "the reviewer did not return a verdict (" + cr.independence + "); a person should look at the change"}, nil
 	}
-	st.Summary = fmt.Sprintf("%s (%s): %s", v.Verdict, cr.independence, firstLine(v.Summary, 300))
+	note := ""
+	if reverted {
+		note = "; it changed files and they were reverted"
+	}
+	st.Summary = fmt.Sprintf("%s (%s%s): %s", v.Verdict, cr.independence, note, firstLine(v.Summary, 300))
 	e.emit(run.ID, step.ID, "review.verdict", map[string]any{
 		"verdict": v.Verdict, "summary": v.Summary, "issues": v.Issues,
 		"independence": cr.independence, "account": cr.account.ID, "provider": cr.account.Provider,

@@ -5,13 +5,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/agent/claude"
 	"github.com/Mvnshi/legatus/internal/agent/codex"
+	"github.com/Mvnshi/legatus/internal/app"
 	"github.com/Mvnshi/legatus/internal/pool"
 )
 
@@ -26,8 +26,6 @@ An account is one login of one agent, kept in its own folder so several can be u
 --home default uses the login the agent already has on this computer.
 Use only logins you are entitled to use, within each provider's terms.
 `
-
-var accountID = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
 
 func cmdAccounts(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
@@ -62,7 +60,7 @@ func accountsAdd(args []string, stdout, stderr io.Writer) int {
 	if code, ok := parse(fs, args); !ok {
 		return code
 	}
-	if !accountID.MatchString(*id) {
+	if !app.ValidAccountID(*id) {
 		fmt.Fprintln(stderr, "legatus: --id must be 1-32 lowercase letters, digits, - or _")
 		return 64
 	}
@@ -78,36 +76,15 @@ func accountsAdd(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 1
 	}
-	for _, s := range a.Pool.Snapshots() {
-		if s.ID == *id {
-			return fail(stderr, fmt.Errorf("an account named %q already exists", *id))
-		}
-	}
-	dir := *home
-	switch dir {
-	case "":
-		dir = a.AccountHome(*provider, *id)
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return fail(stderr, err)
-		}
-	case "default":
-		dir = ""
-	default:
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return fail(stderr, err)
-		}
-	}
-	if err := a.Pool.Add(pool.Account{ID: *id, Provider: *provider, Label: *label, Home: dir, MaxConcurrent: *max}); err != nil {
+	acct, err := a.AddAccount(*id, *provider, *home, *label, *max)
+	if err != nil {
 		return fail(stderr, err)
 	}
-	if err := a.SaveAccounts(); err != nil {
-		return fail(stderr, err)
-	}
-	if dir == "" {
+	if acct.Home == "" {
 		fmt.Fprintf(stdout, "Added %s (%s), using the login %s already has on this computer.\n", *id, *provider, *provider)
 		return 0
 	}
-	fmt.Fprintf(stdout, "Added %s (%s) with its own folder %s\nSign in to it now:\n\n  legatus accounts login %s\n", *id, *provider, dir, *id)
+	fmt.Fprintf(stdout, "Added %s (%s) with its own folder %s\nSign in to it now:\n\n  legatus accounts login %s\n", *id, *provider, acct.Home, *id)
 	return 0
 }
 
@@ -219,10 +196,7 @@ func accountsToggle(disable bool, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 1
 	}
-	if !a.Pool.SetDisabled(fs.Arg(0), disable) {
-		return fail(stderr, fmt.Errorf("no account named %q", fs.Arg(0)))
-	}
-	if err := a.SaveAccounts(); err != nil {
+	if err := a.SetAccountDisabled(fs.Arg(0), disable); err != nil {
 		return fail(stderr, err)
 	}
 	word := "enabled"
@@ -247,15 +221,7 @@ func accountsRemove(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 1
 	}
-	found := false
-	for _, s := range a.Pool.Snapshots() {
-		found = found || s.ID == fs.Arg(0)
-	}
-	if !found {
-		return fail(stderr, fmt.Errorf("no account named %q", fs.Arg(0)))
-	}
-	a.Pool.Remove(fs.Arg(0))
-	if err := a.SaveAccounts(); err != nil {
+	if err := a.RemoveAccount(fs.Arg(0)); err != nil {
 		return fail(stderr, err)
 	}
 	fmt.Fprintf(stdout, "Removed %s. Its folder was left alone; delete it yourself if you want the login gone.\n", fs.Arg(0))

@@ -28,7 +28,7 @@ var idPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,63}$`)
 // Store is safe for use by many goroutines in one process. One process owns a store directory at a time.
 type Store struct {
 	dir string
-	mu  sync.Mutex
+	mu  sync.RWMutex // readers (Load, List, Events) share it; writers (Save, Append) hold it alone
 }
 
 // Open creates the directory layout if needed.
@@ -79,11 +79,38 @@ func (s *Store) Save(r *model.Run) error {
 		os.Remove(name)
 		return err
 	}
-	if err := os.Rename(name, filepath.Join(dir, "run.json")); err != nil {
+	if err := RenameReplace(name, filepath.Join(dir, "run.json")); err != nil {
 		os.Remove(name)
 		return err
 	}
 	return nil
+}
+
+// RenameReplace renames over an existing file. On Windows that fails with "Access is denied" for a moment
+// whenever another process (a second `legatus show`, an editor, a backup) has the old file open, so it is
+// retried briefly before giving up.
+func RenameReplace(from, to string) error {
+	var err error
+	for attempt := 0; attempt < 40; attempt++ {
+		if err = os.Rename(from, to); err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(attempt+1) * 5 * time.Millisecond)
+	}
+	return err
+}
+
+// readFile reads a whole file, retrying briefly when another process is replacing it.
+func readFile(path string) ([]byte, error) {
+	var data []byte
+	var err error
+	for attempt := 0; attempt < 20; attempt++ {
+		if data, err = os.ReadFile(path); err == nil || errors.Is(err, os.ErrNotExist) {
+			return data, err
+		}
+		time.Sleep(time.Duration(attempt+1) * 5 * time.Millisecond)
+	}
+	return data, err
 }
 
 // Load reads one run.
@@ -92,7 +119,9 @@ func (s *Store) Load(id string) (*model.Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "run.json"))
+	s.mu.RLock()
+	data, err := readFile(filepath.Join(dir, "run.json"))
+	s.mu.RUnlock()
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, ErrNotFound
 	}
@@ -160,6 +189,8 @@ func (s *Store) Events(id string, from int) ([]model.Event, int, error) {
 	if err != nil {
 		return nil, from, err
 	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	f, err := os.Open(filepath.Join(dir, "events.jsonl"))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, from, nil
