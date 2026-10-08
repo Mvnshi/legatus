@@ -149,6 +149,7 @@
     const pill = h('span', { class: 'pill', id: 'queue-pill' });
     const nav = h('nav', { class: 'nav' },
       h('a', { href: '#/', 'data-nav': 'runs', text: 'Runs' }),
+      h('a', { href: '#/automations', 'data-nav': 'automations', text: 'Automations' }),
       h('a', { href: '#/accounts', 'data-nav': 'accounts', text: 'Logins' }));
     const top = h('header', { class: 'top' },
       h('a', { class: 'brand', href: '#/' }, h('i'), 'Legatus'), nav, h('span', { class: 'spacer' }), pill,
@@ -586,6 +587,42 @@
     view = { cleanup() {}, refresh: draw };
   }
 
+  // ---------------------------------------------------------------- automations
+  function viewAutomations() {
+    setNav('automations');
+    const body = h('div', { class: 'stack' });
+    shell.main.replaceChildren(h('h1', { text: 'Automations' }), h('div', { style: 'margin-top:1rem' }, body));
+
+    async function load() {
+      let data;
+      try { data = await api('/api/automations'); } catch (e) { put(body, h('div', { class: 'errbox', text: e.message })); return; }
+      const list = data.automations || [];
+      put(body,
+        data.error ? h('div', { class: 'errbox' }, h('strong', { text: 'The automations file has a problem. The last good version is still running. ' }), h('pre', { class: 'mono', text: data.error })) : null,
+        list.length ? list.map(automationCard) : h('div', { class: 'empty' }, h('b', { text: 'No automations yet' }),
+          h('p', { text: 'An automation starts tasks for you: on a schedule, or when a trusted person labels a GitHub issue.' }),
+          h('p', { class: 'mono', text: 'legatus automations example' })),
+        h('p', { class: 'muted' }, 'They are written in ', h('span', { class: 'mono', text: data.file || 'automations.yaml' }), '. Edits take effect within a minute. Run ', h('span', { class: 'mono', text: 'legatus automations check' }), ' to validate it.'));
+    }
+    function automationCard(a) {
+      return h('div', { class: 'card acct' },
+        h('div', { class: 'row between' },
+          h('strong', {}, a.id, ' ', h('span', { class: 'muted', text: a.kind })),
+          a.disabled ? h('span', { class: 'badge s-canceled', text: 'off' }) : a.active ? h('span', { class: 'badge s-running', text: a.active + ' running' }) : h('span', { class: 'badge s-succeeded', text: 'on' })),
+        h('div', { class: 'muted', text: a.when }),
+        h('div', { class: 'muted' },
+          a.last && !a.last.startsWith('0001') ? 'Last run: ' + ago(a.last) + '. ' : 'Has not run yet. ',
+          a.next && !a.next.startsWith('0001') && !a.disabled ? h('span', {}, 'Next ', untilSpan(a.next), '.') : null),
+        a.note ? h('div', { text: a.note }) : null,
+        a.kind === 'schedule' && !a.disabled ? h('div', {}, h('button', { class: 'small', onclick: async () => {
+          try { const r = await api('/api/automations/' + a.id + '/run', { method: 'POST', body: {} }); toast('Started'); location.hash = '#/run/' + r.id; }
+          catch (e) { toast(e.message, true); }
+        }, text: 'Run now' })) : null);
+    }
+    load();
+    view = { cleanup() {}, refresh: load };
+  }
+
   // ---------------------------------------------------------------- routing
   function route() {
     // A link with a new key (after the daemon restarted, say) opened in a tab that already has the page:
@@ -604,6 +641,7 @@
     const m = location.hash.match(/^#\/run\/([a-z0-9-]+)/);
     if (m) viewRun(m[1]);
     else if (location.hash.startsWith('#/accounts')) viewAccounts();
+    else if (location.hash.startsWith('#/automations')) viewAutomations();
     else viewRuns();
     updateTop();
   }

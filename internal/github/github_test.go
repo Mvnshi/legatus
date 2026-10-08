@@ -128,7 +128,7 @@ func TestParseRef(t *testing.T) {
 }
 
 // The JSON below is the shape `gh issue view --json ...` printed for a real issue.
-const realIssue = `{"body":"<!-- upstream-watch:windows-arm64 -->\nThe newest build is not recorded.","labels":[{"id":"LA_kwDOURFN988AAAAC7Z-_bg","name":"upstream-build","description":"A new official build","color":"5319e7"}],"number":14,"state":"CLOSED","title":"[Windows ARM64] Official build 26.1002.7124.0 is not verified yet","url":"https://github.com/Mvnshi/codex-subscription-router/issues/14"}`
+const realIssue = `{"author":{"is_bot":true,"login":"app/github-actions"},"body":"<!-- upstream-watch:windows-arm64 -->\nThe newest build is not recorded.","labels":[{"id":"LA_kwDOURFN988AAAAC7Z-_bg","name":"upstream-build","description":"A new official build","color":"5319e7"}],"number":14,"state":"CLOSED","title":"[Windows ARM64] Official build 26.1002.7124.0 is not verified yet","url":"https://github.com/Mvnshi/codex-subscription-router/issues/14"}`
 
 func TestReadingAnIssue(t *testing.T) {
 	f := newFake(t, map[string]scripted{"issue view": {Stdout: realIssue}})
@@ -137,11 +137,11 @@ func TestReadingAnIssue(t *testing.T) {
 		t.Fatal(err)
 	}
 	if issue.Ref.Number != 14 || issue.State != "closed" || len(issue.Labels) != 1 || issue.Labels[0] != "upstream-build" ||
-		!strings.HasPrefix(issue.Title, "[Windows ARM64]") || !strings.Contains(issue.Body, "not recorded") {
+		issue.Author != "app/github-actions" || !strings.HasPrefix(issue.Title, "[Windows ARM64]") || !strings.Contains(issue.Body, "not recorded") {
 		t.Fatalf("issue = %+v", issue)
 	}
 	got := argsOf(f.calls()[0])
-	for _, want := range []string{"issue view 14", "--repo Mvnshi/codex-subscription-router", "--json number,title,body,url,state,labels"} {
+	for _, want := range []string{"issue view 14", "--repo Mvnshi/codex-subscription-router", "--json number,title,body,url,state,labels,author"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("gh was called without %q: %s", want, got)
 		}
@@ -174,11 +174,11 @@ func TestAnIssueThatCannotBeReadSaysWhy(t *testing.T) {
 }
 
 func TestListIssues(t *testing.T) {
-	list := `[{"labels":[{"name":"legatus"}],"number":21,"state":"OPEN","title":"Add dark mode","updatedAt":"2026-10-07T17:55:06Z","url":"https://github.com/o/r/issues/21"},` +
+	list := `[{"author":{"login":"Mvnshi"},"labels":[{"name":"legatus"}],"number":21,"state":"OPEN","title":"Add dark mode","updatedAt":"2026-10-07T17:55:06Z","url":"https://github.com/o/r/issues/21"},` +
 		`{"labels":[],"number":3,"title":"Typo","updatedAt":"2026-10-01T10:00:00Z","url":"https://github.com/o/r/issues/3"}]`
 	f := newFake(t, map[string]scripted{"issue list": {Stdout: list}})
 	got, err := f.client.ListIssues(context.Background(), "o/r", "legatus", 10)
-	if err != nil || len(got) != 2 || got[0].Number != 21 || got[0].Labels[0] != "legatus" || got[1].Title != "Typo" || got[0].UpdatedAt.Year() != 2026 {
+	if err != nil || len(got) != 2 || got[0].Number != 21 || got[0].Labels[0] != "legatus" || got[0].Author != "Mvnshi" || got[1].Title != "Typo" || got[0].UpdatedAt.Year() != 2026 {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 	args := argsOf(f.calls()[0])

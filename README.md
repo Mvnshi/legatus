@@ -56,6 +56,39 @@ issue text is fenced off and the agent is told not to take orders from it, becau
 either with `--pr`, with `legatus pr`, or with the button in the cockpit, which asks you to confirm. A run that
 needs a person (the reviewer disagreed) only ever opens as a draft.
 
+## Automations: tasks that start by themselves
+
+With the daemon running, standing instructions in `automations.yaml` start runs for you: on a schedule, or when
+an issue with a label appears.
+
+```text
+legatus automations example      # a sample file to start from
+legatus automations check        # validate it (the daemon also picks up edits within a minute)
+```
+
+```yaml
+automations:
+  - id: weekly-deps
+    schedule: weekly mon 09:00      # every 6h | daily 09:00 | weekdays 09:00 | weekly mon 09:00
+    repo: C:/code/my-app
+    prompt: Update the dependencies, fix whatever breaks, and keep the tests passing.
+    checks: ["npm test"]
+    review: true
+    pr: draft
+    max_active: 1                   # do not start another while one is still going
+  - id: labelled-issues
+    github: {repo: you/my-app, label: legatus, every: 10m, authors: [you]}
+    repo: C:/code/my-app
+    checks: ["npm test"]
+    pr: draft
+```
+
+A schedule first runs at the next scheduled time after you add it, never straight away, and a missed time is run
+once, not repeatedly. A watch takes each issue once. **A watch only accepts issues from the logins you list under
+`authors`** (the file is refused without them): anyone who could write or label an issue could otherwise steer
+an agent on your computer. `anyone: true` turns that check off and is yours to justify. The cockpit's
+Automations page shows what is on, when it last ran and runs next, and has a "Run now" button.
+
 ## The daemon and the cockpit
 
 `legatus run` works on one task in your terminal. To queue many, leave Legatus running:
@@ -118,7 +151,8 @@ moves fast, so check before quoting this):
 Tested automatically (stand-in agents, real git): runs and workflows, worktrees (12 created at once without
 lock errors), the account pool and scheduler, limit handling and waiting for a reset, check feedback,
 independent review and its fallbacks, redaction and environment scrubbing, cancel and resume, nine runs at
-once over three logins, the queue (worker limits, cancel, retry, resuming after a restart), the HTTP API and
+once over three logins, schedules and the GitHub watcher (with a fake clock: first sighting, catching up once,
+weekends, active limits, author checks, restarts, hot reload of the file), the queue (worker limits, cancel, retry, resuming after a restart), the HTTP API and
 its security checks (host, origin, key, content policy), live streams, the command line.
 
 The cockpit was used in a real browser (Chromium, Windows) against the daemon with stand-in agents: the run
@@ -160,7 +194,7 @@ and you sign in with the agent's own `login` command.
 
 ## Roadmap
 
-Not built yet: Jira and Linear intake, watching GitHub for labelled issues, schedules, a container sandbox, usage probes
+Not built yet: Jira and Linear intake, a container sandbox, usage probes
 so the scheduler prefers the login with the most left, reaching the daemon safely from another device, an
 installer. See [docs/DESIGN.md](docs/DESIGN.md).
 

@@ -26,6 +26,7 @@ Usage:
   legatus show <run>                   show a run and its evidence report
   legatus accounts <add|ls|login|rm|enable|disable>
                                        manage the logins work is spread across
+  legatus automations [check|example]  schedules and GitHub label watchers the daemon runs for you
   legatus clean                        remove the worktrees of finished runs
   legatus doctor                       check the tools and logins Legatus needs
   legatus demo                         watch a usage limit being handled, with no agent installed
@@ -66,6 +67,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return cmdClean(rest, stdout, stderr)
 	case "pr":
 		return cmdPR(rest, stdout, stderr)
+	case "automations":
+		return cmdAutomations(rest, stdout, stderr)
 	case "serve":
 		return cmdServe(rest, stdout, stderr)
 	case "open":

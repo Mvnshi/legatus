@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -127,5 +128,39 @@ func TestRunsShowAndCleanAfterTheDemoKeepsItsFiles(t *testing.T) {
 	}
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not installed")
+	}
+}
+
+func TestTheExampleAutomationsFileIsValidAndTheCommandsWork(t *testing.T) {
+	home := t.TempDir()
+	if code, out, _ := invoke(t, home, "automations", "example"); code != 0 || !strings.Contains(out, "labelled-issues") {
+		t.Fatalf("example: %d %q", code, out)
+	}
+	_, example, _ := invoke(t, home, "automations", "example")
+	repo := filepath.ToSlash(t.TempDir())
+	file := filepath.Join(home, "automations.yaml")
+	if code, out, _ := invoke(t, home, "automations", "path"); code != 0 || strings.TrimSpace(out) != file {
+		t.Fatalf("path: %d %q, want %s", code, out, file)
+	}
+	if code, out, _ := invoke(t, home, "automations", "check"); code != 0 || !strings.Contains(out, "No automations") {
+		t.Fatalf("empty check: %d %q", code, out)
+	}
+	// The sample must stay valid as the format changes: fill in a real folder and check it.
+	filled := strings.ReplaceAll(example, "C:/code/my-app", repo)
+	if err := os.WriteFile(file, []byte(filled), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, errText := invoke(t, home, "automations", "check")
+	if code != 0 || !strings.Contains(out, "weekly-deps") || !strings.Contains(out, "labelled-issues") || !strings.Contains(out, "is valid") {
+		t.Fatalf("the example is not valid: %d %q %q", code, out, errText)
+	}
+	// A watch with no authors is refused, and the command says why.
+	bad := regexp.MustCompile(`(?m)^\s*authors:.*\n`).ReplaceAllString(filled, "")
+	os.WriteFile(file, []byte(bad), 0o600)
+	if code, _, errText := invoke(t, home, "automations", "check"); code != 1 || !strings.Contains(errText, "github.authors is required") {
+		t.Fatalf("a risky watch was accepted: %d %q", code, errText)
+	}
+	if code, _, _ := invoke(t, home, "automations", "frobnicate"); code != 64 {
+		t.Fatalf("unknown subcommand: %d", code)
 	}
 }

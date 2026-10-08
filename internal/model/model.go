@@ -33,15 +33,16 @@ const (
 
 // Task is what the user asked for.
 type Task struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Prompt    string    `json:"prompt"`
-	Repo      string    `json:"repo"`
-	Base      string    `json:"base"`
-	Workflow  string    `json:"workflow"`
-	Source    string    `json:"source,omitempty"`  // e.g. "github:owner/repo#12"
-	OpenPR    string    `json:"open_pr,omitempty"` // "draft" or "ready": open a pull request when the run succeeds
-	CreatedAt time.Time `json:"created_at"`
+	ID         string    `json:"id"`
+	Title      string    `json:"title"`
+	Prompt     string    `json:"prompt"`
+	Repo       string    `json:"repo"`
+	Base       string    `json:"base"`
+	Workflow   string    `json:"workflow"`
+	Source     string    `json:"source,omitempty"`     // e.g. "github:owner/repo#12"
+	Automation string    `json:"automation,omitempty"` // the automation that created this task, if any
+	OpenPR     string    `json:"open_pr,omitempty"`    // "draft" or "ready": open a pull request when the run succeeds
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // StepState is the progress of one workflow step inside a run.

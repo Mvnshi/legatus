@@ -116,9 +116,19 @@ description, records the address on the run, and is idempotent (a second call, o
 pull request, returns the existing one). A run that needs a person is opened as a draft and never claims to
 close an issue.
 
+## Automations
+
+`internal/automation` reads `automations.yaml` (hot-reloaded; a broken edit keeps the last good version and says
+so) and ticks every 30 seconds. A schedule counts from the first time it is seen, so enabling "daily 09:00" at
+three in the afternoon does not start a run at once; a time that was missed is owed once, not repeatedly; and
+nothing new starts while `max_active` runs of the same automation are still going. A GitHub watch looks at
+labelled issues on its own interval and takes each issue once, remembered across restarts. Because an issue can
+be written by anyone, a watch needs an explicit list of trusted authors, and the author is checked again on the
+full issue before anything starts.
+
 ## Roadmap
 
-1. Intake that watches: GitHub issues carrying a label, then Jira and Linear; schedules.
+1. More intake: Jira and Linear.
 2. Usage probes (Codex reports rate limits) so the scheduler prefers the login with the most left.
 3. A container sandbox, so Windows does not depend on the agent's own sandbox.
 4. Safe access from another device (authenticated, encrypted), for a VPS or a phone away from home.

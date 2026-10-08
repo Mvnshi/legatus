@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/app"
+	"github.com/Mvnshi/legatus/internal/automation"
 	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/hub"
 	"github.com/Mvnshi/legatus/internal/model"
@@ -39,6 +40,10 @@ type Server struct {
 	Version string
 	// GitHub reads issues; the real gh-based client when nil.
 	GitHub IssueReader
+	// Runner is the automations engine; nil when none is configured.
+	Runner *automation.Runner
+	// AutomationsFile is where the automations are written, shown in the cockpit.
+	AutomationsFile string
 }
 
 // IssueReader reads a GitHub issue. *github.Client is the real one.
@@ -64,6 +69,8 @@ func (s *Server) Handler() http.Handler {
 	api("POST /api/runs/{id}/cancel", s.handleCancel)
 	api("POST /api/runs/{id}/retry", s.handleRetry)
 	api("POST /api/runs/{id}/pr", s.handlePR)
+	api("GET /api/automations", s.handleAutomations)
+	api("POST /api/automations/{id}/run", s.handleRunAutomation)
 	api("GET /api/accounts", s.handleAccounts)
 	api("POST /api/accounts", s.handleAddAccount)
 	api("POST /api/accounts/{id}/enable", s.handleToggleAccount(false))
@@ -407,6 +414,35 @@ func (s *Server) handleDiff(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = io.WriteString(w, patch)
+}
+
+// --- automations -------------------------------------------------------------------------------------------
+
+func (s *Server) handleAutomations(w http.ResponseWriter, r *http.Request) {
+	out := map[string]any{"automations": []automation.Status{}, "file": s.AutomationsFile}
+	if s.Runner != nil {
+		status, err := s.Runner.Status()
+		if status != nil {
+			out["automations"] = status
+		}
+		if err != nil {
+			out["error"] = err.Error()
+		}
+	}
+	writeJSON(w, 200, out)
+}
+
+func (s *Server) handleRunAutomation(w http.ResponseWriter, r *http.Request) {
+	if s.Runner == nil {
+		writeErr(w, 404, "no automations are configured")
+		return
+	}
+	run, err := s.Runner.RunNow(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeErr(w, 409, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, summarize(run))
 }
 
 // --- accounts --------------------------------------------------------------------------------------------

@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/Mvnshi/legatus/internal/app"
+	"github.com/Mvnshi/legatus/internal/automation"
+	"github.com/Mvnshi/legatus/internal/github"
 	"github.com/Mvnshi/legatus/internal/hub"
 	"github.com/Mvnshi/legatus/internal/model"
 	"github.com/Mvnshi/legatus/internal/queue"
@@ -61,7 +63,14 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 	}
 	h := hub.New()
 	sched := &queue.Scheduler{Engine: a.Engine, Hub: h, Concurrency: *concurrency}
-	srv := &server.Server{App: a, Sched: sched, Hub: h, Token: token, Version: Version}
+	runner := &automation.Runner{
+		Dir: a.Root, Submitter: sched, Runs: a.Store, GitHub: &github.Client{},
+		Log: func(format string, args ...any) { fmt.Fprintf(stderr, "legatus: "+format+"\n", args...) },
+	}
+	srv := &server.Server{
+		App: a, Sched: sched, Hub: h, Token: token, Version: Version,
+		Runner: runner, AutomationsFile: filepath.Join(a.Root, "automations.yaml"),
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -70,6 +79,21 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	defer sched.Stop()
+	if *demo {
+		sample := fmt.Sprintf(`automations:
+  - id: weekly-docs
+    schedule: weekly mon 09:00
+    repo: %q
+    prompt: Refresh the documentation for the export command.
+    checks: ["git --version"]
+    review: true
+    agent: codex
+`, filepath.ToSlash(demoRepo))
+		if err := os.WriteFile(filepath.Join(a.Root, "automations.yaml"), []byte(sample), 0o600); err != nil {
+			return fail(stderr, err)
+		}
+	}
+	go runner.Run(ctx, 30*time.Second)
 
 	err = srv.Serve(ctx, *addr, func(bound net.Addr) {
 		fmt.Fprintf(stdout, "Legatus is running at http://%s\n", bound)

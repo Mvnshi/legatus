@@ -103,6 +103,7 @@ func ParseRef(s string) (Ref, error) {
 // Issue is what a task is made from.
 type Issue struct {
 	Ref    Ref
+	Author string // the GitHub login that wrote it; bots appear as app/<name>
 	Title  string
 	Body   string
 	URL    string
@@ -137,7 +138,7 @@ func (c *Client) Issue(ctx context.Context, ref, dir string) (*Issue, error) {
 		r.Owner, r.Repo = base.Owner, base.Repo
 	}
 	out, err := c.run(ctx, dir, c.gh(), c.PrefixArgs, "issue", "view", strconv.Itoa(r.Number), "--repo", r.Slug(),
-		"--json", "number,title,body,url,state,labels")
+		"--json", "number,title,body,url,state,labels,author")
 	if err != nil {
 		return nil, fmt.Errorf("cannot read %s: %w", r, err)
 	}
@@ -147,6 +148,9 @@ func (c *Client) Issue(ctx context.Context, ref, dir string) (*Issue, error) {
 		Body   string `json:"body"`
 		URL    string `json:"url"`
 		State  string `json:"state"`
+		Author struct {
+			Login string `json:"login"`
+		} `json:"author"`
 		Labels []struct {
 			Name string `json:"name"`
 		} `json:"labels"`
@@ -154,7 +158,7 @@ func (c *Client) Issue(ctx context.Context, ref, dir string) (*Issue, error) {
 	if err := json.Unmarshal([]byte(out), &raw); err != nil {
 		return nil, fmt.Errorf("unexpected answer from gh: %w", err)
 	}
-	issue := &Issue{Ref: r, Title: raw.Title, Body: raw.Body, URL: raw.URL, State: strings.ToLower(raw.State)}
+	issue := &Issue{Ref: r, Author: raw.Author.Login, Title: raw.Title, Body: raw.Body, URL: raw.URL, State: strings.ToLower(raw.State)}
 	issue.Ref.Number = raw.Number
 	for _, l := range raw.Labels {
 		issue.Labels = append(issue.Labels, l.Name)
@@ -164,6 +168,7 @@ func (c *Client) Issue(ctx context.Context, ref, dir string) (*Issue, error) {
 
 // IssueSummary is a line in a list of issues.
 type IssueSummary struct {
+	Author    string
 	Number    int
 	Title     string
 	URL       string
@@ -177,7 +182,7 @@ func (c *Client) ListIssues(ctx context.Context, slug, label string, limit int) 
 		limit = 30
 	}
 	out, err := c.run(ctx, "", c.gh(), c.PrefixArgs, "issue", "list", "--repo", slug, "--label", label, "--state", "open",
-		"--limit", strconv.Itoa(limit), "--json", "number,title,url,updatedAt,labels")
+		"--limit", strconv.Itoa(limit), "--json", "number,title,url,updatedAt,labels,author")
 	if err != nil {
 		return nil, fmt.Errorf("cannot list issues of %s: %w", slug, err)
 	}
@@ -186,7 +191,10 @@ func (c *Client) ListIssues(ctx context.Context, slug, label string, limit int) 
 		Title     string    `json:"title"`
 		URL       string    `json:"url"`
 		UpdatedAt time.Time `json:"updatedAt"`
-		Labels    []struct {
+		Author    struct {
+			Login string `json:"login"`
+		} `json:"author"`
+		Labels []struct {
 			Name string `json:"name"`
 		} `json:"labels"`
 	}
@@ -195,7 +203,7 @@ func (c *Client) ListIssues(ctx context.Context, slug, label string, limit int) 
 	}
 	var list []IssueSummary
 	for _, r := range raw {
-		s := IssueSummary{Number: r.Number, Title: r.Title, URL: r.URL, UpdatedAt: r.UpdatedAt}
+		s := IssueSummary{Author: r.Author.Login, Number: r.Number, Title: r.Title, URL: r.URL, UpdatedAt: r.UpdatedAt}
 		for _, l := range r.Labels {
 			s.Labels = append(s.Labels, l.Name)
 		}
