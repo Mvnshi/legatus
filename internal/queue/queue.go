@@ -15,8 +15,10 @@ import (
 )
 
 // DefaultConcurrency is how many runs work at once when none is set. The real limit on agent work is the
-// account pool (each login takes its own number of tasks); this one bounds worktrees and check processes.
-const DefaultConcurrency = 6
+// account pool (each login takes its own number of tasks); this one bounds worktrees and the agents' own
+// builds. It is deliberately small: a coding agent that builds and tests its work is heavy, and several at
+// once can use up a machine's memory. Raise it with --concurrency when the machine can take it.
+const DefaultConcurrency = 2
 
 // Stats is a snapshot of the queue.
 type Stats struct {

@@ -50,6 +50,14 @@ type Engine struct {
 	// GitHub opens pull requests; the real gh-based client when nil.
 	GitHub PROpener
 
+	// CheckSlots is how many check commands may run at once across all runs; 1 when zero. Builds and test
+	// suites are the heaviest thing Legatus starts, and several at once can use up a machine's memory.
+	CheckSlots int
+	gateOnce   sync.Once
+	gate       chan struct{}
+	// shell runs one check command; runShell unless a test replaces it.
+	shell func(ctx context.Context, dir, command string, env []string, timeout time.Duration) (string, int, error)
+
 	pfMu   sync.Mutex
 	pfDone map[string]error // sandbox check results by account, for this process
 }
@@ -76,6 +84,29 @@ func (e *Engine) sleep(ctx context.Context, d time.Duration) error {
 	case <-t.C:
 		return nil
 	}
+}
+
+// acquireCheck waits for a free check slot and returns the function that gives it back. While it waits it
+// says so in the run's journal, so a person looking at a "running" run can see why nothing is happening.
+func (e *Engine) acquireCheck(ctx context.Context, runID, stepID string) (func(), error) {
+	e.gateOnce.Do(func() {
+		n := e.CheckSlots
+		if n < 1 {
+			n = 1
+		}
+		e.gate = make(chan struct{}, n)
+	})
+	select {
+	case e.gate <- struct{}{}:
+	default:
+		e.emit(runID, stepID, "check.waiting", map[string]any{"reason": "another run is using the check slot"})
+		select {
+		case e.gate <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return func() { <-e.gate }, nil
 }
 
 func (e *Engine) environ() []string {

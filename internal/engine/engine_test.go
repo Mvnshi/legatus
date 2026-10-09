@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -769,5 +770,66 @@ func TestAFailedPullRequestIsRecordedAndDoesNotChangeTheRun(t *testing.T) {
 	}
 	if _, err := h.eng.OpenPullRequest(context.Background(), failedRun.ID, false); err == nil {
 		t.Fatal("a failed run was given a pull request")
+	}
+}
+
+// Found by using Legatus on itself: several runs each building and testing at once used up a machine's memory.
+func TestHeavyChecksRunOneAtATimeAcrossRunsAndTheLimitCanBeRaised(t *testing.T) {
+	measure := func(slots int) (peak int32, runs []*model.Run, h *harness) {
+		h = newHarness(t, codexAccounts("a", "b", "c", "d"), fake.New("codex", nil))
+		h.eng.CheckSlots = slots
+		var now int32
+		h.eng.shell = func(ctx context.Context, dir, command string, env []string, timeout time.Duration) (string, int, error) {
+			n := atomic.AddInt32(&now, 1)
+			for {
+				p := atomic.LoadInt32(&peak)
+				if n <= p || atomic.CompareAndSwapInt32(&peak, p, n) {
+					break
+				}
+			}
+			time.Sleep(1200 * time.Millisecond)
+			atomic.AddInt32(&now, -1)
+			return "", 0, nil
+		}
+		wf := workflow.Default([]string{"a heavy command"}, false)
+		runs = make([]*model.Run, 4)
+		var wg sync.WaitGroup
+		for i := range runs {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				r, err := h.eng.NewRun(ctx, model.Task{Prompt: fmt.Sprintf("task %d", i), Repo: h.repo, Base: "main"}, wf)
+				if err != nil {
+					t.Errorf("NewRun: %v", err)
+					return
+				}
+				if err := h.eng.Execute(ctx, r.ID, wf); err != nil {
+					t.Errorf("Execute: %v", err)
+				}
+				runs[i], _ = h.store.Load(r.ID)
+			}(i)
+		}
+		wg.Wait()
+		return peak, runs, h
+	}
+
+	peak, runs, h := measure(0) // the default is one at a time
+	if peak != 1 {
+		t.Fatalf("%d check commands ran at once with the default limit, want 1", peak)
+	}
+	waited := false
+	for _, r := range runs {
+		if r == nil || r.Status != model.Succeeded {
+			t.Fatalf("run = %+v", r)
+		}
+		waited = waited || hasEvent(h.events(r), "check.waiting")
+	}
+	if !waited {
+		t.Fatal("no run said it was waiting for the check slot")
+	}
+	if peak, _, _ := measure(2); peak != 2 {
+		t.Fatalf("%d check commands ran at once with two slots, want 2", peak)
 	}
 }

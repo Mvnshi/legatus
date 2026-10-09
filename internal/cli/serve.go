@@ -30,6 +30,7 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 	fs := newFlags("serve", stderr)
 	addr := fs.String("addr", server.DefaultAddr, "where to listen (this computer only)")
 	concurrency := fs.Int("concurrency", queue.DefaultConcurrency, "how many runs may work at once")
+	checkSlots := fs.Int("check-slots", 1, "how many check commands (builds, test suites) may run at once across all runs")
 	root := fs.String("root", "", "where Legatus keeps its files")
 	openBrowser := fs.Bool("open", false, "open the cockpit in your browser when it is ready")
 	demo := fs.Bool("demo", false, "try the cockpit with stand-in agents and a throwaway repository (nothing real is used)")
@@ -62,6 +63,7 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	h := hub.New()
+	a.Engine.CheckSlots = *checkSlots
 	sched := &queue.Scheduler{Engine: a.Engine, Hub: h, Concurrency: *concurrency}
 	runner := &automation.Runner{
 		Dir: a.Root, Submitter: sched, Runs: a.Store, GitHub: &github.Client{},

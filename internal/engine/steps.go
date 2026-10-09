@@ -137,7 +137,16 @@ func (e *Engine) checkStep(ctx context.Context, run *model.Run, wf *workflow.Wor
 	env := sandbox.Env(e.environ(), append([]string{"GOPATH", "GOCACHE", "GOMODCACHE", "GOFLAGS", "CI"}, step.Sandbox.Env...), nil)
 	for _, command := range step.Run {
 		e.emit(run.ID, step.ID, "check.started", map[string]any{"command": command})
-		output, code, err := runShell(ctx, run.Worktree, command, env, timeout)
+		release, gerr := e.acquireCheck(ctx, run.ID, step.ID)
+		if gerr != nil {
+			return outcome{}, gerr
+		}
+		shell := e.shell
+		if shell == nil {
+			shell = runShell
+		}
+		output, code, err := shell(ctx, run.Worktree, command, env, timeout)
+		release()
 		if ctx.Err() != nil {
 			return outcome{}, ctx.Err()
 		}
