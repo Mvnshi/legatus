@@ -4,3 +4,4 @@
 *.test
 *.out
 .legatus/
+/site/assets/

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legatus: coding agents that keep going when a login runs out</title>
+<meta name="description" content="Legatus runs Codex and Claude Code in parallel on your own machine, spread across your own subscriptions. When one login hits its usage limit, another picks the work up. Open source, MIT.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="canonical" href="https://mvnshi.github.io/legatus/">
+<meta property="og:title" content="Legatus">
+<meta property="og:description" content="Run coding agents in parallel on your own machine, and keep them working when a login runs out of usage.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mvnshi.github.io/legatus/">
+<meta property="og:image" content="https://mvnshi.github.io/legatus/assets/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="#top" aria-label="Legatus home"><img src="assets/logo.svg" alt="" width="28" height="28">Legatus</a>
+  <nav aria-label="Main">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#status">Status</a>
+    <a href="#install">Install</a>
+    <a class="gh" href="https://github.com/Mvnshi/legatus">GitHub</a>
+  </nav>
+</header>
+
+<main id="main">
+<section class="hero" id="top">
+  <p class="eyebrow">Open source · MIT · early (v0.1)</p>
+  <h1>Keep your coding agents working when a login runs out.</h1>
+  <p class="lede">Legatus runs Codex and Claude Code in parallel on your own machine, spread across your own subscriptions.
+    Every task gets its own branch, your checks, an independent review, and a report you read before you merge.</p>
+  <p class="cta">
+    <a class="btn primary" href="https://github.com/Mvnshi/legatus/releases">Download</a>
+    <a class="btn" href="https://github.com/Mvnshi/legatus">View on GitHub</a>
+  </p>
+  <figure class="shot">
+    <img src="assets/cockpit-run.png" alt="The Legatus cockpit showing a run: the first login hit its usage limit and the work continued on a second login, then passed its checks and an independent review" width="1280" height="1000">
+  </figure>
+</section>
+
+<section id="how">
+  <h2>What happens at a usage limit</h2>
+  <ol class="steps">
+    <li><span>1</span><div><h3>The login runs out</h3><p>An agent stops with a usage-limit error. Legatus recognises it and reads when the login resets.</p></div></li>
+    <li><span>2</span><div><h3>The work is saved</h3><p>Whatever was written is committed on the run's branch, and the next attempt is told exactly where things stand.</p></div></li>
+    <li><span>3</span><div><h3>Another login continues</h3><p>The pool hands the task to a login that still has usage. The checks and the review still run afterwards.</p></div></li>
+    <li><span>4</span><div><h3>Or it waits, and carries on</h3><p>If every login is out, the run waits for the first reset. It survives a restart, and picks up where it stopped.</p></div></li>
+  </ol>
+</section>
+
+<section id="features">
+  <h2>What it does</h2>
+  <div class="grid">
+    <article><h3>A pool of your own logins</h3><p>Each login lives in its own folder, signed in with the agent's own <code>login</code>. Legatus never sees a password. Work goes to a login with usage left.</p></article>
+    <article><h3>Independent review</h3><p>A different provider (or at least a different login) reviews read-only. Whatever a reviewer touches is reverted, and no verdict is never an approval.</p></article>
+    <article><h3>Safe by default</h3><p>Secrets are removed before anything is stored. Agents get a scrubbed environment. The agent's own sandbox is checked first. Nothing is published unless you ask.</p></article>
+    <article><h3>A cockpit that stays on your machine</h3><p>Runs, a live journal, reports, diffs, logins and countdowns, and it works on a phone-sized screen. It listens only locally and needs a secret key.</p></article>
+    <article><h3>Issues in, pull requests out</h3><p>Start a task from a GitHub issue (its text is treated as untrusted). A finished run can open a pull request with its report as the description, only when you ask.</p></article>
+    <article><h3>Tasks that start themselves</h3><p>Schedules, and a watcher for labelled issues that only accepts authors you list. Heavy checks run one at a time, so a queue never uses up your memory.</p></article>
+  </div>
+</section>
+
+<section id="status">
+  <h2>An honest status</h2>
+  <p>Legatus is early. The core is tested on Linux, macOS and Windows with stand-in agents and real <code>git</code>, and it has completed real tasks with the real Codex CLI on Windows. Some things have <strong>not</strong> been run for real yet:
+  Claude Code, a real usage-limit message, a second real login, a real pull request, and macOS or Linux by hand.</p>
+  <p><a href="https://github.com/Mvnshi/legatus/blob/main/docs/STATUS.md">Read exactly what is verified and what is not</a>.</p>
+</section>
+
+<section id="install">
+  <h2>Try it in a minute</h2>
+  <p>You don't need an agent installed to watch a limit being handled.</p>
+  <pre><code>legatus demo            # a usage limit is hit mid-task and handled
+legatus serve --demo    # the same, in the web cockpit</code></pre>
+  <p>Get a build from <a href="https://github.com/Mvnshi/legatus/releases">Releases</a> (Windows, macOS, Linux), or with Go 1.26+:</p>
+  <pre><code>go install github.com/Mvnshi/legatus/cmd/legatus@latest</code></pre>
+  <p>To use it for real you need <code>git</code> and a signed-in <a href="https://github.com/openai/codex">Codex CLI</a> or Claude Code:</p>
+  <pre><code>legatus doctor
+legatus accounts add --id main --provider codex --home default
+legatus run --repo . --check "npm test" --review "add input validation to the signup form"</code></pre>
+</section>
+</main>
+
+<footer>
+  <p>Legatus is MIT licensed. Spread work across subscriptions you are entitled to use, within each provider's terms.</p>
+  <p><a href="https://github.com/Mvnshi/legatus">Source</a> · <a href="https://github.com/Mvnshi/legatus/blob/main/docs/DESIGN.md">How it works</a> · <a href="https://github.com/Mvnshi/legatus/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/Mvnshi/legatus/blob/main/CONTRIBUTING.md">Contributing</a></p>
+</footer>
+</body>
+</html>

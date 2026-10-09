@@ -1,0 +1,73 @@
+name: Release
+
+# Push a tag such as v0.1.0 to build the program for every system and publish a release with checksums.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Test before publishing anything
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          go vet ./...
+          go test -p 2 ./...
+
+      - name: Build every target
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os=${target%/*}; arch=${target#*/}
+            name="legatus_${TAG}_${os}_${arch}"
+            bin=legatus; [ "$os" = windows ] && bin=legatus.exe
+            mkdir "dist/$name"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X github.com/Mvnshi/legatus/internal/cli.Version=${TAG}" \
+              -o "dist/$name/$bin" ./cmd/legatus
+            cp LICENSE README.md "dist/$name/"
+            if [ "$os" = windows ]; then
+              (cd dist && zip -qr "$name.zip" "$name")
+            else
+              tar -C dist -czf "dist/$name.tar.gz" "$name"
+            fi
+            rm -rf "dist/$name"
+          done
+          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Notes come from the matching section of CHANGELOG.md.
+          awk -v tag="${TAG#v}" '
+            $0 ~ "^## \\[" tag "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
+          flags=""
+          case "$TAG" in v0.*) flags="--prerelease" ;; esac
+          gh release create "$TAG" dist/* --title "Legatus $TAG" --notes-file notes.md $flags
