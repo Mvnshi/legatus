@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -120,16 +121,19 @@ func (g *rig) runner() *Runner {
 	return &Runner{Dir: g.dir, Submitter: g.sub, Runs: g.sub.store, GitHub: g.gh, Now: g.clk.Now}
 }
 
+// writeSeq numbers the writes of every rig, so no two share a modification time.
+var writeSeq atomic.Int64
+
 func (g *rig) write(config string) {
 	g.t.Helper()
 	path := filepath.Join(g.dir, "automations.yaml")
 	if err := os.WriteFile(path, cfg(config), 0o600); err != nil {
 		g.t.Fatal(err)
 	}
-	// Distinct modification times, so a quick rewrite is noticed on every file system.
-	g.clk.mu.Lock()
-	stamp := time.Now().Add(time.Duration(g.sub.n+int(time.Now().UnixNano()%1000)+1) * time.Second)
-	g.clk.mu.Unlock()
+	// Distinct modification times, so a quick rewrite is noticed on every file system. Each stamp is a second
+	// later than the last, whatever the clock says: Windows hands two writes in the same tick the same time, and
+	// the runner then sees no change.
+	stamp := time.Now().Add(time.Hour + time.Duration(writeSeq.Add(1))*time.Second)
 	os.Chtimes(path, stamp, stamp)
 }
 
