@@ -117,9 +117,10 @@
     display: inline;
   }
 
+  /* Sized so all five links fit a 360px screen even in a wide fallback font such as DejaVu Sans. */
   .site-header__nav a {
-    padding: 0 10px;
-    font-size: 15px;
+    padding: 0 8px;
+    font-size: 14px;
   }
 
   .site-header__nav .site-header__github {

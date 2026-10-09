@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { XPIcon, type XPIconName } from "./icons";
+import { useScrollable } from "../lib/useScrollable";
 import "./explorer.css";
 
 /**
@@ -21,6 +22,7 @@ export function XPExplorerPane({
   children: ReactNode;
   className?: string;
 }) {
+  const { ref: tasksRef, scrollable } = useScrollable<HTMLElement>();
   return (
     <div className={`xp-explorer ${className}`}>
       {toolbar ? <div className="xp-explorer__toolbar">{toolbar}</div> : null}
@@ -34,7 +36,13 @@ export function XPExplorerPane({
         </div>
       ) : null}
       <div className="xp-explorer__split">
-        <aside className="xp-explorer__tasks">{sidebar}</aside>
+        <aside
+          ref={tasksRef}
+          className="xp-explorer__tasks"
+          {...(scrollable ? { tabIndex: 0, "aria-label": "Task pane" } : {})}
+        >
+          {sidebar}
+        </aside>
         <div className="xp-explorer__content">{children}</div>
       </div>
     </div>

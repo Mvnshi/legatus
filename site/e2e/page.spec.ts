@@ -199,17 +199,20 @@ test.describe("content", () => {
 });
 
 test.describe("optional effects", () => {
-  test("the Paper Shaders wallpaper is lazy, and the static wallpaper is always there", async ({ page }) => {
+  test("the Paper Shaders wallpaper is its own lazy chunk, loaded only when WebGL is there", async ({ page, request }) => {
+    // Not part of the page as delivered: no script or preload in the HTML points at it.
+    const html = await (await request.get("./")).text();
+    expect(html).not.toContain("WallpaperShader");
+
     const chunks: string[] = [];
     page.on("request", (r) => {
       if (/WallpaperShader/.test(r.url())) chunks.push(r.url());
     });
     await page.goto("./");
     await expect(page.locator(".wallpaper__art").first()).toBeVisible();
-    // The shader chunk is not part of the first load.
-    expect(chunks).toEqual([]);
     test.skip(!(await webglWorks(page)), "this browser has no WebGL");
-    await page.locator(".demo-section__frame").scrollIntoViewIfNeeded();
+    // It arrives later, once the browser is idle, as exactly one extra request, and then it draws.
+    await expect.poll(() => chunks.length, { timeout: 10_000 }).toBe(1);
     await expect(page.locator(".wallpaper").first()).toHaveAttribute("data-shader", "on", { timeout: 10_000 });
     await expect(page.locator(".wallpaper__shader canvas")).toHaveCount(1);
     expect(chunks.length).toBe(1);

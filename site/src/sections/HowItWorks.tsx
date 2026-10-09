@@ -42,7 +42,7 @@ export function HowItWorks() {
               }
             >
               {moves.map((m) => (
-                <Tabs.Content key={m.id} value={m.id} className="how__panel" tabIndex={-1}>
+                <Tabs.Content key={m.id} value={m.id} className="how__panel">
                   <div className="how__panel-head">
                     <XPIcon name={m.icon} size={44} />
                     <h3>{m.title}</h3>

@@ -28,7 +28,7 @@ export function XPTab({ value, icon, children }: { value: string; icon?: XPIconN
 
 export function XPTabPanel({ value, className = "", children }: { value: string; className?: string; children: ReactNode }) {
   return (
-    <Tabs.Content value={value} className={`xp-tabpanel ${className}`} tabIndex={-1}>
+    <Tabs.Content value={value} className={`xp-tabpanel ${className}`}>
       {children}
     </Tabs.Content>
   );

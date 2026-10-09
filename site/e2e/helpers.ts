@@ -18,8 +18,21 @@ export async function withoutWebGL(page: Page) {
   });
 }
 
+/**
+ * CI machines fall back to wider fonts than a developer machine does. LEGATUS_WIDE_FONTS=1 reproduces that
+ * locally by forcing DejaVu Sans, which is what most Linux runners use.
+ */
+async function withWideFonts(page: Page) {
+  await page.addInitScript(() => {
+    const style = document.createElement("style");
+    style.textContent = ':root{--font-ui:"DejaVu Sans",sans-serif;--font-title:"DejaVu Sans",sans-serif}';
+    document.addEventListener("DOMContentLoaded", () => document.head.append(style));
+  });
+}
+
 export async function openSite(page: Page, options: { shader?: boolean } = {}) {
   if (!options.shader) await withoutWebGL(page);
+  if (process.env.LEGATUS_WIDE_FONTS) await withWideFonts(page);
   await page.goto("./");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Your agents\.\s*One command center\./);
   // The desktop measures itself before it paints; wait until the cockpit is there.

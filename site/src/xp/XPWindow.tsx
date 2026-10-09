@@ -11,6 +11,7 @@ import {
 } from "react";
 import { animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { XPIcon, type XPIconName } from "./icons";
+import { useScrollable } from "../lib/useScrollable";
 import "./window.css";
 
 export interface WindowRect {
@@ -76,6 +77,7 @@ export function XPWindow(props: XPWindowProps) {
   } = props;
   const titleId = useId();
   const reduced = useReducedMotion();
+  const { ref: bodyRef, scrollable } = useScrollable<HTMLDivElement>();
   // On a phone a minimized window folds up to its title bar; its contents must leave the tab order too.
   const collapsed = layout === "stacked" && minimized;
 
@@ -89,7 +91,13 @@ export function XPWindow(props: XPWindowProps) {
           aria-hidden={collapsed ? true : undefined}
         >
           {menu}
-          <div className={`xp-win__body ${bodyClassName}`}>{children}</div>
+          <div
+            ref={bodyRef}
+            className={`xp-win__body ${bodyClassName}`}
+            {...(scrollable ? { tabIndex: 0, role: "region", "aria-label": `${props.title}, scrollable` } : {})}
+          >
+            {children}
+          </div>
           {status && status.length > 0 ? (
             <div className="status-bar xp-win__status">
               {status.map((field, i) => (

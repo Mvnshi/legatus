@@ -60,7 +60,7 @@ export function StatusSection() {
               }
             >
               {statusGroups.map((g) => (
-                <Tabs.Content key={g.id} value={g.id} className="status__panel" tabIndex={-1}>
+                <Tabs.Content key={g.id} value={g.id} className="status__panel">
                   <h3>
                     <XPIcon name={g.icon} size={26} /> {g.title}
                   </h3>

@@ -58,10 +58,10 @@ test.describe("windows on the desktop", () => {
     await openSite(page);
     const before = await boxOf(cockpit(page));
     await cockpit(page).getByRole("button", { name: "Maximize" }).click();
-    await expect.poll(async () => (await boxOf(cockpit(page))).width).toBeGreaterThan(before.width + 100);
     const stage = await boxOf(page.locator(".desktop"));
-    const full = await boxOf(cockpit(page));
-    expect(Math.round(full.x)).toBe(Math.round(stage.x));
+    // The window animates to its new size and position; wait for it to arrive instead of sampling mid-flight.
+    await expect.poll(async () => Math.round((await boxOf(cockpit(page))).x)).toBe(Math.round(stage.x));
+    await expect.poll(async () => Math.round((await boxOf(cockpit(page))).width)).toBe(Math.round(stage.width));
     await cockpit(page).getByRole("button", { name: "Restore" }).click();
     await expect.poll(async () => Math.round((await boxOf(cockpit(page))).width)).toBe(Math.round(before.width));
   });
