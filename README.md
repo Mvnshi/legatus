@@ -39,7 +39,8 @@ legatus run --repo . --check "npm test" "add input validation to the signup form
 ```
 
 Useful flags: `--review` (independent review), `--agent codex|claude|any`, `--workflow file.yaml`,
-`--no-sandbox` (see [Sandboxing](#sandboxing)). `legatus runs`, `legatus show <run>`, `legatus resume <run>`,
+`--no-sandbox` (see [Sandboxing](#sandboxing)). `legatus runs [--status <status>]` (for example, `--status failed`
+or `--status needs_human`), `legatus show <run>`, `legatus resume <run>`,
 `legatus clean`.
 
 ## From a GitHub issue to a pull request

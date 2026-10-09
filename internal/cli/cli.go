@@ -22,7 +22,7 @@ Usage:
   legatus queue "what to do"           add a task to the running daemon
   legatus pr <run>                     push a finished run's branch and open a pull request
   legatus resume <run>                 continue a run that was interrupted
-  legatus runs                         list runs
+  legatus runs [--status <status>]     list runs, optionally filtered by status
   legatus show <run>                   show a run and its evidence report
   legatus accounts <add|ls|login|rm|enable|disable>
                                        manage the logins work is spread across

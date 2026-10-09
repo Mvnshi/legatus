@@ -8,6 +8,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/Mvnshi/legatus/internal/model"
+	"github.com/Mvnshi/legatus/internal/store"
 )
 
 // invoke runs the command line with its own empty Legatus home.
@@ -107,6 +111,73 @@ func TestRunNeedsATaskAndAnAccount(t *testing.T) {
 	}
 	if code, _, errText := invoke(t, home, "run", "do a thing"); code != 1 || !strings.Contains(errText, "no accounts yet") {
 		t.Fatalf("no accounts: %d %q", code, errText)
+	}
+}
+
+func TestRunsStatusFilter(t *testing.T) {
+	home := t.TempDir()
+	st, err := store.Open(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	statuses := []model.Status{model.Queued, model.Running, model.WaitingCapacity, model.NeedsHuman, model.Succeeded, model.Failed, model.Canceled}
+	for _, status := range statuses {
+		if err := st.Save(&model.Run{ID: "run-" + strings.ReplaceAll(string(status), "_", "-"), Status: status,
+			Task: model.Task{Title: "task-" + string(status)}, CreatedAt: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, status := range statuses {
+		t.Run(string(status), func(t *testing.T) {
+			code, out, errText := invoke(t, home, "runs", "--status", string(status))
+			if code != 0 || errText != "" || !strings.Contains(out, "RUN") || !strings.Contains(out, "task-"+string(status)) {
+				t.Fatalf("filtered runs: %d %q %q", code, out, errText)
+			}
+			for _, other := range statuses {
+				if other != status && strings.Contains(out, "task-"+string(other)) {
+					t.Errorf("filter %s included %s: %q", status, other, out)
+				}
+			}
+		})
+	}
+	code, out, errText := invoke(t, home, "runs")
+	if code != 0 || errText != "" {
+		t.Fatalf("unfiltered runs: %d %q %q", code, out, errText)
+	}
+	for _, status := range statuses {
+		if !strings.Contains(out, "task-"+string(status)) {
+			t.Errorf("unfiltered runs omitted %s: %q", status, out)
+		}
+	}
+}
+
+func TestRunsStatusFilterNoMatches(t *testing.T) {
+	home := t.TempDir()
+	check := func() {
+		t.Helper()
+		code, out, errText := invoke(t, home, "runs", "--status", "failed")
+		if code != 0 || errText != "" || out != "No runs have status \"failed\".\n" {
+			t.Fatalf("no matching runs: %d %q %q", code, out, errText)
+		}
+	}
+	check()
+	st, err := store.Open(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Save(&model.Run{ID: "run-ok", Status: model.Succeeded}); err != nil {
+		t.Fatal(err)
+	}
+	check()
+}
+
+func TestRunsRejectsUnknownStatus(t *testing.T) {
+	for _, status := range []string{"unknown", "pending", "FAILED", ""} {
+		code, out, errText := invoke(t, t.TempDir(), "runs", "--status", status)
+		if code != 64 || out != "" || !strings.Contains(errText, "unknown status") ||
+			!strings.Contains(errText, "queued, running, waiting_capacity, needs_human, succeeded, failed, canceled") {
+			t.Errorf("invalid status %q: %d %q %q", status, code, out, errText)
+		}
 	}
 }
 

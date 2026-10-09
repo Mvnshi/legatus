@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -188,8 +189,24 @@ func finishExecution(ctx context.Context, e *engine.Engine, id string, stdout, s
 func cmdRuns(args []string, stdout, stderr io.Writer) int {
 	fs := newFlags("runs", stderr)
 	root := fs.String("root", "", "where Legatus keeps its files")
+	status := fs.String("status", "", "list only runs in this status")
 	if code, ok := parse(fs, args); !ok {
 		return code
+	}
+	filter := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "status" {
+			filter = true
+		}
+	})
+	if filter {
+		switch model.Status(*status) {
+		case model.Queued, model.Running, model.WaitingCapacity, model.NeedsHuman, model.Succeeded, model.Failed, model.Canceled:
+		default:
+			fmt.Fprintf(stderr, "legatus: unknown status %q. Valid statuses are: %s.\n", *status,
+				strings.Join([]string{string(model.Queued), string(model.Running), string(model.WaitingCapacity), string(model.NeedsHuman), string(model.Succeeded), string(model.Failed), string(model.Canceled)}, ", "))
+			return 64
+		}
 	}
 	a, ok := openApp(*root, stderr)
 	if !ok {
@@ -198,6 +215,19 @@ func cmdRuns(args []string, stdout, stderr io.Writer) int {
 	runs, err := a.Store.List()
 	if err != nil {
 		return fail(stderr, err)
+	}
+	if filter {
+		var matches []*model.Run
+		for _, r := range runs {
+			if r.Status == model.Status(*status) {
+				matches = append(matches, r)
+			}
+		}
+		runs = matches
+		if len(runs) == 0 {
+			fmt.Fprintf(stdout, "No runs have status %q.\n", *status)
+			return 0
+		}
 	}
 	if len(runs) == 0 {
 		fmt.Fprintln(stdout, "No runs yet. Try: legatus run \"your task\"")
