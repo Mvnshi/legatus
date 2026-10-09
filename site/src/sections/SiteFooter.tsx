@@ -21,8 +21,7 @@ export function SiteFooter() {
               Legatus is released under the <a href={links.license} target="_blank" rel="noopener noreferrer">MIT license</a>.
             </p>
             <p>
-              Use only your own logins. Spread work across subscriptions you are entitled to use, within each provider's
-              terms. Legatus never asks for or stores a password.
+              Use only your own logins, within each provider's terms. Legatus never asks for or stores a password.
             </p>
           </section>
 

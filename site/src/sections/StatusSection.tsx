@@ -13,13 +13,11 @@ export function StatusSection() {
     <section className="section" id="status" aria-labelledby="status-title">
       <div className="wrap">
         <div className="section__head">
-          <p className="eyebrow">An honest status</p>
+          <p className="eyebrow">Status</p>
           <h2 id="status-title">What is verified, and what is not</h2>
           <p className="section__lede">
-            Legatus is early software (v0.1). The core is tested on Linux, macOS and Windows with stand-in agents and real{" "}
-            <code>git</code>. It has completed real tasks with the real Codex CLI on a Windows PC and with the real Claude
-            Code on Linux, including moving to another login when one is refused. Some things have not been run for real
-            yet, and they are listed first.
+            Tested on Linux, macOS and Windows with stand-in agents and real <code>git</code>. Run for real with Codex on
+            Windows and Claude Code on Linux. What has not been run for real comes first.
           </p>
         </div>
         <XPWindow layout="static" id="status-window" title="Verification · docs/STATUS.md" icon="status" active>

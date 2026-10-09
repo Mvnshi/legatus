@@ -228,7 +228,7 @@ const beats: Beat[] = [
         s,
         "warning",
         "work-1 reached its usage limit",
-        "Legatus is saving the work so far and handing the task to work-2.",
+        "Saving the work so far and handing the task to work-2.",
       );
     },
   },

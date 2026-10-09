@@ -17,8 +17,7 @@ export function InstallSection() {
           <p className="eyebrow">Download</p>
           <h2 id="install-title">Install Legatus</h2>
           <p className="section__lede">
-            One program, no installer. Download a build for your system, or build it from source with Go. The built-in demo
-            needs no agent and no account.
+            One program, no installer. <code>legatus demo</code> needs no agent and no account.
           </p>
         </div>
         <div className="install-layout">
@@ -93,7 +92,7 @@ export function InstallSection() {
                   ))}
                 </ul>
                 <p>
-                  <a href="#status">See the full list</a> of what is verified and what is not.
+                  <a href="#status">Full status</a>
                 </p>
               </div>
             </XPWindow>

@@ -16,9 +16,6 @@ export function HowItWorks() {
         <div className="section__head">
           <p className="eyebrow">How it works</p>
           <h2 id="how-title">From a task to something you can review</h2>
-          <p className="section__lede">
-            Five things happen to every task. Pick one to read how it works, and which command starts it.
-          </p>
         </div>
         <XPWindow layout="static" id="how-window" title="How a run goes" icon="queue" active>
           <Tabs.Root value={move} onValueChange={setMove} orientation="vertical">
@@ -54,7 +51,7 @@ export function HowItWorks() {
                   <p className="how__demo">
                     <XPIcon name="info" size={20} />
                     <span>
-                      <strong>In the demo.</strong> {m.inDemo} <a href="#demo">Go to the demo</a>
+                      <strong>Demo:</strong> {m.inDemo} <a href="#demo">Open the demo</a>
                     </span>
                   </p>
                 </Tabs.Content>

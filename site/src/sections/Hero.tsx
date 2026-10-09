@@ -26,7 +26,7 @@ export function Hero() {
               {hero.secondary}
             </XPLinkButton>
           </div>
-          <p className="hero__fact">{hero.facts[2]}. Your code and your logins stay on your machine.</p>
+          <p className="hero__fact">{hero.facts[2]}. Your code and logins stay on your machine.</p>
         </div>
         <div className="hero__art" aria-hidden="true">
           <div className="hero__orb">

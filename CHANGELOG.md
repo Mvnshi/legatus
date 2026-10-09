@@ -22,6 +22,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and t
 
 ### Changed
 
+- The website's wording is shorter and says things instead of announcing them: no lines that describe the page or
+  state the obvious, one line under a heading at most, and the same fact stated once.
 - The project website (`site/`) is rebuilt as a React, TypeScript and Vite app styled after Windows XP's Luna theme,
   served from `/legatus/`. It has a playable, clearly labelled "Simulated demo" of a usage limit being handled, real
   release information beside the install steps, and the verification limits from `docs/STATUS.md`. The Go program
