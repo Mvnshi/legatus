@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -46,7 +47,8 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	if v, ok := version(claude.Executable(), "--version"); ok {
 		line("ok", "claude %s", v)
-		line("--", "the claude backend is untested against a real install; treat its first runs as a trial")
+		mark, text := claudeTrial(v, runtime.GOOS)
+		line(mark, "%s", text)
 	} else {
 		line("--", "claude is not on PATH (needed for claude accounts)")
 	}
@@ -92,4 +94,14 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintln(stdout, "Ready.")
 	return 0
+}
+
+// claudeTrial says how far the claude backend has been proven for the installed version. It was run for
+// real with claude.VerifiedVersion on Linux; any other version or system is a trial, and a usage limit has
+// not been provoked on any of them.
+func claudeTrial(installed, goos string) (mark, text string) {
+	if goos == "linux" && strings.HasPrefix(strings.TrimSpace(installed), claude.VerifiedVersion+" ") {
+		return "ok", "the claude backend has been run for real with this version, on Linux (a real usage limit was not provoked)"
+	}
+	return "--", "the claude backend has been run for real only with Claude Code " + claude.VerifiedVersion + " on Linux; treat the first runs here as a trial"
 }

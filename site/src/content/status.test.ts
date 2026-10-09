@@ -40,12 +40,12 @@ describe("the page's verification claims match docs/STATUS.md", () => {
 
   it("keeps the facts that matter exactly as STATUS.md states them", () => {
     expect(doc).toContain("Codex CLI 0.162");
-    expect(doc).toContain("never been run against a real install");
+    expect(doc).toContain("Claude Code 2.1.295");
     expect(doc).toContain("set aside for 30 minutes");
     expect(doc).toContain("twelve created at the same moment");
     const page = JSON.stringify(statusGroups);
     expect(page).toContain("Codex CLI 0.162");
-    expect(page).toContain("never been run against a real install");
+    expect(page).toContain("Claude Code 2.1.295");
     expect(page).toContain("set aside for 30 minutes");
     expect(page).toContain("twelve created at the same moment");
   });
@@ -53,6 +53,9 @@ describe("the page's verification claims match docs/STATUS.md", () => {
   it("states the compatibility summary without overclaiming", () => {
     const text = compatibility.join(" ");
     expect(text).toMatch(/Claude Code/);
+    // What was proven is named, and so is what was not.
+    expect(text).toMatch(/Run for real/);
+    expect(text).toMatch(/Not run for real/);
     expect(text).toMatch(/not code-signed/i);
     expect(text).not.toMatch(/fully tested|production[- ]ready|battle[- ]tested|enterprise/i);
   });

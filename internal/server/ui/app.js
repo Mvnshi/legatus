@@ -533,7 +533,7 @@
   function viewAccounts() {
     setNav('accounts');
     const list = h('div', { class: 'list' });
-    const idIn = h('input', { id: 'a-id', placeholder: 'work', required: true, pattern: '[a-z0-9][a-z0-9_-]{0,31}' });
+    const idIn = h('input', { id: 'a-id', placeholder: 'work', required: true, pattern: '[a-z0-9][a-z0-9_\\-]{0,31}' });
     const prov = h('select', { id: 'a-prov' }, ['codex', 'claude'].map((p) => h('option', { value: p, text: p })));
     const home = h('select', { id: 'a-home' },
       h('option', { value: '', text: 'A new, separate login (recommended)' }),

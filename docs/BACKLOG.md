@@ -23,8 +23,9 @@ Each item can be picked up as written. Sizes are rough: S is an hour or two, M a
   with a button that adds the author or dismisses it.
 - **Jira and Linear intake** (M). The same shape as the GitHub watcher: a read-only client, an authors allow-list,
   issue text fenced off as untrusted.
-- **Verify the Claude Code backend against a real install** (M). Run it, fix what differs, capture real output for
-  the tests, and update [STATUS.md](STATUS.md).
+- **Verify Claude Code beyond one version and one system** (M). It was run for real with 2.1.295 on Linux (see
+  [STATUS.md](STATUS.md)). What remains is Windows, macOS, a personal subscription login, and a real usage limit
+  from Anthropic rather than a simulated refusal.
 
 ## Larger
 

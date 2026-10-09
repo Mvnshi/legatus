@@ -110,11 +110,13 @@ test.describe("content", () => {
     const groups = page.getByRole("tablist", { name: "Verification groups" });
     await expect(groups.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
     await expect(groups.getByRole("tab").first()).toContainText("Not verified yet");
-    const panel = page.getByRole("tabpanel").filter({ hasText: "Claude Code." });
-    await expect(panel).toContainText("never been run against a real install");
+    const panel = page.getByRole("tabpanel").filter({ hasText: "A real usage limit" });
+    await expect(panel).toContainText("simulated by a local server");
     await expect(panel).toContainText("set aside for 30 minutes");
     await groups.getByRole("tab", { name: /Run for real/ }).click();
-    await expect(page.getByRole("tabpanel").filter({ hasText: "Codex CLI 0.162" })).toBeVisible();
+    const real = page.getByRole("tabpanel").filter({ hasText: "Codex CLI 0.162" });
+    await expect(real).toBeVisible();
+    await expect(real).toContainText("Claude Code 2.1.295");
   });
 
   test("The real cockpit: four screenshots, each with alt text, loaded only when opened", async ({ page }) => {
@@ -168,14 +170,20 @@ test.describe("content", () => {
     await expect(compat).toContainText("not an operating-system sandbox");
   });
 
-  test("Install: the copy buttons copy", async ({ page, context }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  test("Install: the copy buttons copy", async ({ page, context, browserName }) => {
+    // Only Chromium lets a test grant itself the right to read the clipboard back.
+    if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await openSite(page);
     const dialog = page.getByRole("group", { name: "Install Legatus" });
     await dialog.getByRole("radio", { name: "Linux" }).click();
     await dialog.getByRole("radio", { name: "x64 (Intel or AMD)" }).click();
     await dialog.getByRole("button", { name: /Copy Run command/ }).click();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("./legatus_v0.1.0_linux_amd64/legatus demo");
+    // The page tells the person (and a screen reader) that it copied, in every browser...
+    await expect(dialog.getByText("Run command copied to the clipboard.")).toBeAttached();
+    // ...and where the clipboard can be read back, what it holds is the command.
+    if (browserName === "chromium") {
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("./legatus_v0.1.0_linux_amd64/legatus demo");
+    }
   });
 
   test("licensing lives in the footer, not in the hero or beside the install steps", async ({ page }) => {

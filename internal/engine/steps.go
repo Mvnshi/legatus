@@ -374,7 +374,33 @@ func (e *Engine) lease(ctx context.Context, run *model.Run, wf *workflow.Workflo
 		f.Providers = []string{step.Agent}
 	}
 	l, err := e.Pool.Acquire(ctx, f)
-	return l, "", err
+	if err != nil {
+		return l, "", err
+	}
+	return l, reviewIndependence(run, wf, idx, l.Account), nil
+}
+
+// reviewIndependence says how far a reviewer is from the login that wrote the change when the workflow did
+// not ask for "other-than:<step>" and so chose no one in particular. Without it the evidence reads "()".
+// It is empty for steps that are not reviews.
+func reviewIndependence(run *model.Run, wf *workflow.Workflow, idx int, reviewer pool.Account) string {
+	if wf.Steps[idx].Kind() != model.StepReview {
+		return ""
+	}
+	for i := idx - 1; i >= 0; i-- {
+		if wf.Steps[i].Kind() != model.StepAgent || run.Steps[i].Account == "" {
+			continue
+		}
+		switch author := run.Steps[i]; {
+		case author.Provider != reviewer.Provider:
+			return "other-provider"
+		case author.Account != reviewer.ID:
+			return "other-account"
+		default:
+			return "same-account"
+		}
+	}
+	return "no earlier agent step to compare with"
 }
 
 // park records that the run is out of capacity and waits until the earliest reset.

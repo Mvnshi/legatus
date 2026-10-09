@@ -5,6 +5,21 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and t
 
 ## [Unreleased]
 
+### Fixed
+
+- Claude Code's own wording for a usage limit (`You've hit your session limit · resets 3pm (America/New_York)`, and
+  its weekly, model, spend and team-budget forms) was not recognised, and neither was its `rate_limit_event`. Both
+  are now read, with the reset time taken from the event when there is one and from the message, in the time zone it
+  names, when there is not.
+- `Server is temporarily limiting requests (not your usage limit)` is no longer taken for a login's limit, so a
+  working login is not set aside because the service is busy.
+- Cancelling a run now also stops the commands the agent started in sessions of their own (Claude Code does this for
+  its shell tool); they used to be left running.
+- A review step that did not ask for another login or provider showed its independence as `()` in the run summary and
+  in `evidence.md`; it now says `other-provider`, `other-account` or `same-account`.
+- The cockpit's login-name field had a `pattern` that browsers reject, so they logged an error and skipped the check.
+- `legatus doctor` no longer calls the Claude Code backend untested: it says which version was run for real.
+
 ### Changed
 
 - The project website (`site/`) is rebuilt as a React, TypeScript and Vite app styled after Windows XP's Luna theme,
@@ -23,7 +38,7 @@ First public release. Early software: [docs/STATUS.md](docs/STATUS.md) says what
 - An account pool and scheduler. A usage limit saves the half-finished work, continues on another login, or waits
   for the reset, and the rest of the workflow still runs. Logins can ask for a specific model and effort.
 - Independent review on another provider (or login), read-only, with anything the reviewer touches reverted.
-- Codex and Claude Code backends. (Claude Code is untested against a real install.)
+- Codex and Claude Code backends.
 - Safety: secrets removed before anything is stored, a scrubbed environment for agents, a check that the agent's own
   sandbox can start, and an explicit `--no-sandbox`. One heavy check runs at a time across runs.
 - A daemon (`legatus serve`) with a queue, resume after a restart, cancel and retry, and a web cockpit that listens

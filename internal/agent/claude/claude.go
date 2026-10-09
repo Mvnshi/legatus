@@ -1,9 +1,10 @@
 // Package claude drives Claude Code in headless mode (`claude -p --output-format stream-json`). Each
 // Legatus account is a separate CLAUDE_CONFIG_DIR, so several logins can run side by side.
 //
-// STATUS: written from Claude Code's documented headless interface and tested against scripted output
-// only. It has not been run against a real Claude Code install (none is available on the machine this was
-// written on), so `legatus doctor` reports it as unverified until someone runs it for real.
+// STATUS: run for real against Claude Code 2.1.295 on Linux (a plain reply and a run that used the Bash
+// tool; their output is kept in testdata/ and read by the tests). A real usage limit has not been caught:
+// the limit path is built from the messages and the rate_limit_event that version prints, which were read
+// from the program, not provoked. Other versions and Windows and macOS are untried; `legatus doctor` says so.
 //
 // Limits of what it can enforce: the read-only mode allows only the Read, Grep and Glob tools, and the
 // network setting only blocks Claude's own web tools. A shell command the agent is allowed to run can
@@ -15,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -23,6 +25,9 @@ import (
 	"github.com/Mvnshi/legatus/internal/agent/runner"
 	"github.com/Mvnshi/legatus/internal/pool"
 )
+
+// VerifiedVersion is the Claude Code release the backend has been run against for real (on Linux).
+const VerifiedVersion = "2.1.295"
 
 // Backend runs Claude Code.
 type Backend struct {
@@ -70,7 +75,9 @@ type event struct {
 	Subtype string `json:"subtype"`
 	Result  string `json:"result"`
 	IsError bool   `json:"is_error"`
-	Message *struct {
+	// api_error_status is the HTTP status of the API's refusal on a "result" (429 when the login is rate limited).
+	APIErrorStatus int `json:"api_error_status"`
+	Message        *struct {
 		Content []struct {
 			Type  string          `json:"type"`
 			Text  string          `json:"text"`
@@ -80,6 +87,29 @@ type event struct {
 	} `json:"message"`
 	Usage        map[string]any `json:"usage"`
 	TotalCostUSD float64        `json:"total_cost_usd"`
+	// rate_limit_event: Claude Code reports the state of the login's usage windows as it goes.
+	RateLimit *rateLimit `json:"rate_limit_info"`
+}
+
+type rateLimit struct {
+	Status          string `json:"status"` // allowed, allowed_warning or rejected
+	ResetsAt        int64  `json:"resetsAt"`
+	RateLimitType   string `json:"rateLimitType"` // five_hour, seven_day, ...
+	OverageStatus   string `json:"overageStatus"`
+	OverageResetsAt int64  `json:"overageResetsAt"`
+}
+
+// resetAt is when a rejected login can run again: the window's reset, or the overage's if that comes first
+// (Claude Code shows the earlier of the two). Zero when the event gives no time.
+func (r *rateLimit) resetAt() time.Time {
+	at := r.ResetsAt
+	if r.OverageStatus == "rejected" && r.OverageResetsAt > 0 && (at <= 0 || r.OverageResetsAt < at) {
+		at = r.OverageResetsAt
+	}
+	if at <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(at, 0)
 }
 
 // Args builds the command line. The prompt goes through stdin.
@@ -108,6 +138,7 @@ func (b *Backend) Run(ctx context.Context, req agent.Request, emit func(agent.Ev
 	var (
 		final    *event
 		lastText string
+		rejected *rateLimit // the last rate_limit_event that said the login was refused
 	)
 	res, err := runner.Stream(ctx, runner.Spec{
 		Exe: b.exe(), PrefixArgs: b.PrefixArgs, Args: b.Args(req), Dir: req.Dir, Env: req.Env, Stdin: req.Prompt,
@@ -129,6 +160,11 @@ func (b *Backend) Run(ctx context.Context, req agent.Request, emit func(agent.Ev
 				case "tool_use":
 					emit(agent.Event{Kind: agent.Tool, Text: c.Name, Data: map[string]any{"input": clip(string(c.Input), 500)}})
 				}
+			}
+		case "rate_limit_event":
+			if ev.RateLimit != nil && ev.RateLimit.Status == "rejected" {
+				r := *ev.RateLimit
+				rejected = &r
 			}
 		case "result":
 			e := ev
@@ -153,7 +189,16 @@ func (b *Backend) Run(ctx context.Context, req agent.Request, emit func(agent.Ev
 		default:
 			msg = "claude reported an error: " + final.Subtype
 		}
-		if agent.IsLimitMessage(msg) || agent.IsLimitMessage(res.StderrTail) {
+		// A refusal that Claude Code reported as an event is the surest sign, and it carries the reset as a
+		// timestamp. The wording of the message is the fallback.
+		if rejected != nil {
+			if rejected.RateLimitType != "" && !agent.IsLimitMessage(msg) {
+				msg = fmt.Sprintf("Claude Code reports the %s usage limit is reached: %s", rejected.RateLimitType, msg)
+			}
+			return agent.Result{}, &agent.LimitError{ResetAt: rejected.resetAt(), Message: msg}
+		}
+		refused := final != nil && final.APIErrorStatus == http.StatusTooManyRequests && !agent.IsServerThrottle(msg)
+		if refused || agent.IsLimitMessage(msg) || agent.IsLimitMessage(res.StderrTail) {
 			return agent.Result{}, &agent.LimitError{ResetAt: agent.ParseReset(msg+" "+res.StderrTail, b.now()), Message: msg}
 		}
 		return agent.Result{}, errors.New("claude failed: " + clip(msg, 1500))

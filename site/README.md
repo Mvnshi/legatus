@@ -20,7 +20,10 @@ npm run e2e          # browser tests against the production build, served at /le
 
 `npm run e2e` starts `vite preview` itself, so run `npm run build` first. If Playwright cannot find its own Chromium,
 point it at one you have: `LEGATUS_CHROMIUM=/path/to/chromium npm run e2e`. First time on a machine:
-`npx playwright install chromium`.
+`npx playwright install chromium`. To run the same tests in another engine, set `LEGATUS_BROWSER=firefox` or
+`LEGATUS_BROWSER=webkit` (after `npx playwright install firefox webkit`). CI runs Chromium only; the Firefox and WebKit
+runs reported in `docs/STATUS.md` were done by hand, and the two tests that need WebGL skip themselves in a browser
+that has none.
 
 ## What is where
 

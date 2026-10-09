@@ -17,8 +17,9 @@ export function StatusSection() {
           <h2 id="status-title">What is verified, and what is not</h2>
           <p className="section__lede">
             Legatus is early software (v0.1). The core is tested on Linux, macOS and Windows with stand-in agents and real{" "}
-            <code>git</code>, and it has completed a real task with the real Codex CLI on one Windows PC. Several things have
-            not been run for real yet, and they are listed first.
+            <code>git</code>. It has completed real tasks with the real Codex CLI on a Windows PC and with the real Claude
+            Code on Linux, including moving to another login when one is refused. Some things have not been run for real
+            yet, and they are listed first.
           </p>
         </div>
         <XPWindow layout="static" id="status-window" title="Verification · docs/STATUS.md" icon="status" active>

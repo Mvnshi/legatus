@@ -52,10 +52,10 @@ export const statusGroups: StatusGroup[] = [
     id: "real",
     title: "Run for real",
     icon: "status",
-    lead: "On one Windows PC.",
+    lead: "On one Windows PC, and then on Linux.",
     items: [
       {
-        lead: "Codex CLI 0.162",
+        lead: "Codex CLI 0.162 (Windows)",
         text: "completed a small task end to end through Legatus using an existing login: branch, commit, check and report. The event shapes the parser relies on were captured from that CLI.",
       },
       {
@@ -64,8 +64,24 @@ export const statusGroups: StatusGroup[] = [
       },
       { lead: "Reading a GitHub issue", text: "through the real gh was checked once, read-only." },
       {
-        lead: "The cockpit",
-        text: "was used in a real browser (Chromium) against the daemon with stand-in agents: the run list, a run's live journal, report and diff, adding and switching logins, submitting a task, the automations page, and a phone-sized screen.",
+        lead: "The cockpit (Windows, Chromium)",
+        text: "was used in a real browser against the daemon with stand-in agents: the run list, a run's live journal, report and diff, adding and switching logins, submitting a task, the automations page, and a phone-sized screen.",
+      },
+      {
+        lead: "Claude Code 2.1.295 (Linux)",
+        text: "ran through Legatus end to end: an agent step, a check that failed and sent the work back, a review step, and the daemon working two logins at once. These logins used the test machine's own credentials, not a personal subscription.",
+      },
+      {
+        lead: "A usage limit, with the real Claude Code on the receiving end (Linux)",
+        text: "A local stand-in for the Anthropic API refused a request the way an exhausted login is refused. What Claude Code printed is real. Legatus set that login aside until the reset time in its event and carried on with the second login, including when the refusal came mid-task. Only the server's refusal was simulated.",
+      },
+      {
+        lead: "Cancel (Linux)",
+        text: "stops the agent and the shell command it started. Running it for real found a command that was left running; that is fixed, with a test.",
+      },
+      {
+        lead: "The cockpit in three engines (Linux)",
+        text: "was driven in Chromium, Firefox and Playwright's WebKit build: opening it, submitting a task, the live journal, report and diff, adding a login, automations, and a phone-sized screen. The project site's own browser tests pass in Firefox (bar two that need WebGL) and WebKit.",
       },
     ],
   },
@@ -76,23 +92,22 @@ export const statusGroups: StatusGroup[] = [
     lead: "If something is not listed as verified, assume it has not been run for real.",
     items: [
       {
-        lead: "Claude Code",
-        text: "The backend is written from Claude Code's documented interface and tested against scripted output only. It has never been run against a real install.",
+        lead: "A real usage limit",
+        text: "Claude Code was run against a refusal simulated by a local server, because a login cannot be run out of usage on demand: how it reacts is real, what the Anthropic service sends for a real limit is not captured. Codex's limit messages were written from documented and remembered wordings and never captured. If the reset time cannot be read, the login is set aside for 30 minutes.",
       },
       {
-        lead: "A real usage-limit message",
-        text: "The parser is tolerant of the wordings agents use, but it was written from documented and remembered messages, not captured from a real limit. If the reset time cannot be read, the login is set aside for 30 minutes.",
+        lead: "A personal subscription login for Claude Code",
+        text: "(legatus accounts login, or a login kept in the system keychain). The Linux runs used the credentials the test machine provides, with a separate configuration folder per login.",
       },
-      { lead: "A real second login and a real mid-task limit", text: "Neither has been exercised." },
       {
         lead: "A real pull request on GitHub",
         text: "The flow is tested, but nothing has been opened on a real repository.",
       },
       {
-        lead: "macOS and Linux by hand",
-        text: "The tests run there in CI; nothing has been driven by a person.",
+        lead: "macOS by hand, and Claude Code on Windows and macOS",
+        text: "The tests run there in CI; nothing has been driven by a person. Codex was run for real only on Windows.",
       },
-      { lead: "Firefox and Safari", text: "for the cockpit." },
+      { lead: "Safari itself", text: "The cockpit and the site ran in Firefox and in Playwright's WebKit build on Linux, not in Apple's Safari." },
       {
         lead: "Codex's own Windows sandbox",
         text: "On the PC Legatus was developed on, it could not start, so Legatus probes first and offers --no-sandbox, which is never the default. Whether it starts on other Windows machines is untested, and so is the path where it does.",
@@ -111,8 +126,8 @@ export const statusGroups: StatusGroup[] = [
       },
       { lead: "Two agents", text: "Only Codex and Claude Code are supported." },
       {
-        lead: "Limits are read from error text",
-        text: "A change in an agent's wording can make a limit look like an ordinary failure until the parser is updated.",
+        lead: "Limits are read from the agent's output",
+        text: "For Claude Code that is its rate-limit event, then its message. A change in an agent's wording can make a limit look like an ordinary failure until the parser is updated. Only Claude Code 2.1.295 was run for real.",
       },
       {
         lead: "Not an operating-system sandbox",
@@ -128,8 +143,8 @@ export const statusGroups: StatusGroup[] = [
 
 /** A shorter version for the compatibility box beside the install dialog. */
 export const compatibility: string[] = [
-  "Verified by a person: Codex CLI 0.162 on one Windows PC, through a full run.",
-  "Not run for real: Claude Code, a real usage-limit message, a second real login, a real pull request, and macOS or Linux by hand. Tests cover them with stand-ins on all three systems.",
+  "Run for real through full runs: Codex CLI 0.162 on one Windows PC, and Claude Code 2.1.295 on Linux.",
+  "Not run for real: a usage limit from Anthropic itself, a personal Claude Code login, a real pull request, macOS by hand, and Safari itself. Tests cover them with stand-ins on all three systems.",
   "Release builds are not code-signed yet.",
   "Legatus is not an operating-system sandbox, and the cockpit is local only.",
 ];
