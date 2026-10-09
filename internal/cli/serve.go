@@ -48,7 +48,7 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 		if a, err = demoApp(tmp, 1500*time.Millisecond); err != nil {
 			return fail(stderr, err)
 		}
-		demoRepo = filepath.Join(tmp, "repo")
+		demoRepo = filepath.Join(tmp, "my-app")
 		if err := makeDemoRepo(demoRepo); err != nil {
 			return fail(stderr, err)
 		}

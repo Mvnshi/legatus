@@ -40,12 +40,19 @@
   };
 
   let token = store.get('legatus-token');
-  const fromHash = location.hash.match(/token=([0-9a-f]{64})/);
-  if (fromHash) {
-    token = fromHash[1];
-    store.set('legatus-token', token);
-    history.replaceState(null, '', location.pathname + '#/');
+  // The key can arrive in the address after the route, for example #/run/ab12cd34&token=...; it is kept, and
+  // the address is left holding only the route.
+  const KEY_IN_ADDRESS = /[&?]?token=([0-9a-f]{64})/;
+  function takeKeyFromAddress() {
+    const m = location.hash.match(KEY_IN_ADDRESS);
+    if (!m) return null;
+    store.set('legatus-token', m[1]);
+    const route = location.hash.replace(KEY_IN_ADDRESS, '').replace(/^#&?/, '#');
+    history.replaceState(null, '', location.pathname + (route.length > 1 ? route : '#/'));
+    return m[1];
   }
+  const keyFromAddress = takeKeyFromAddress();
+  if (keyFromAddress) token = keyFromAddress;
 
   class AuthError extends Error {}
 
@@ -627,10 +634,7 @@
   function route() {
     // A link with a new key (after the daemon restarted, say) opened in a tab that already has the page:
     // keep the new key and start over, instead of carrying on with the old one.
-    const fresh = location.hash.match(/token=([0-9a-f]{64})/);
-    if (fresh) {
-      store.set('legatus-token', fresh[1]);
-      history.replaceState(null, '', location.pathname + '#/');
+    if (takeKeyFromAddress()) {
       location.reload();
       return;
     }
