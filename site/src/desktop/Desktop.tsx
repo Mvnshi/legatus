@@ -43,7 +43,7 @@ const META: Record<WinId, { title: string; short: string; icon: XPIconName }> = 
 };
 
 const ABOUT_TEXT =
-  "This desktop is a scripted simulation that runs in your browser. It does not run Legatus or an agent, and its names, files and hashes are sample data. To see the real engine do the same thing, run legatus demo.";
+  "A scripted simulation. It runs no agent, and names, files and hashes are sample data. Run legatus demo for the real engine with stand-in agents.";
 
 /** Notices from the engine and notices the desktop makes up for itself share one balloon. */
 const ENGINE_NOTICE_BASE = 100;
@@ -180,8 +180,8 @@ export function Desktop() {
           : {
               id: LOCAL_NOTICE_BASE,
               tone: "info",
-              title: "Simulated demo",
-              text: "Press Start in the cockpit to watch a usage limit get handled. Nothing here runs a real agent.",
+              title: "Try it",
+              text: "Press Start to watch a usage limit get handled.",
               actionLabel: "Start the demo",
               onAction: () => {
                 actions.play();
@@ -237,7 +237,7 @@ export function Desktop() {
     { id: "try", icon: "play", title: "Try the demo", subtitle: "Start the sample task", onSelect: tryDemo },
     { id: "cockpit", icon: "cockpit", title: "Cockpit", subtitle: "Steps, journal, checks, review", onSelect: () => openWindow("cockpit") },
     { id: "install", icon: "download", title: "Download Legatus", subtitle: `${release.tag} · pre-release`, href: "#install" },
-    { id: "status", icon: "status", title: "What is verified", subtitle: "Read it before you rely on it", href: "#status" },
+    { id: "status", icon: "status", title: "What is verified", subtitle: "What has been run for real", href: "#status" },
   ];
   const places: StartEntry[] = [
     { id: "how", icon: "queue", title: "How it works", href: "#how" },
@@ -337,7 +337,7 @@ export function Desktop() {
       <Wallpaper />
       {desk.mode === "stacked" ? (
         <p className="desktop__banner" data-testid="sim-banner">
-          <XPIcon name="info" size={16} /> <strong>Simulated demo</strong> · scripted in your browser
+          <XPIcon name="info" size={16} /> <strong>Simulated demo</strong>
         </p>
       ) : null}
       <DesktopIcons onOpen={openWindow} stacked={desk.mode === "stacked"} />

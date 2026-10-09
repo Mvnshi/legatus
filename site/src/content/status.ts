@@ -52,7 +52,7 @@ export const statusGroups: StatusGroup[] = [
     id: "real",
     title: "Run for real",
     icon: "status",
-    lead: "On one Windows PC, and then on Linux.",
+    lead: "On a Windows PC and on Linux.",
     items: [
       {
         lead: "Codex CLI 0.162 (Windows)",
@@ -69,19 +69,19 @@ export const statusGroups: StatusGroup[] = [
       },
       {
         lead: "Claude Code 2.1.295 (Linux)",
-        text: "ran through Legatus end to end: an agent step, a check that failed and sent the work back, a review step, and the daemon working two logins at once. These logins used the test machine's own credentials, not a personal subscription.",
+        text: "ran an agent step, a check that failed and sent the work back, a review, and the daemon working two logins at once. The logins used the test machine's credentials, not a personal subscription.",
       },
       {
-        lead: "A usage limit, with the real Claude Code on the receiving end (Linux)",
-        text: "A local stand-in for the Anthropic API refused a request the way an exhausted login is refused. What Claude Code printed is real. Legatus set that login aside until the reset time in its event and carried on with the second login, including when the refusal came mid-task. Only the server's refusal was simulated.",
+        lead: "A usage limit (Linux)",
+        text: "A local stand-in for the Anthropic API refused a request the way an exhausted login is refused, and the real Claude Code answered. Legatus set that login aside until the reset in its event and carried on with the second login, also when the refusal came mid-task.",
       },
       {
         lead: "Cancel (Linux)",
-        text: "stops the agent and the shell command it started. Running it for real found a command that was left running; that is fixed, with a test.",
+        text: "stops the agent and the shell command it started. The first real try found a command left running; that is fixed.",
       },
       {
         lead: "The cockpit in three engines (Linux)",
-        text: "was driven in Chromium, Firefox and Playwright's WebKit build: opening it, submitting a task, the live journal, report and diff, adding a login, automations, and a phone-sized screen. The project site's own browser tests pass in Firefox (bar two that need WebGL) and WebKit.",
+        text: "was driven in Chromium, Firefox and Playwright's WebKit: submitting a task, the live journal, report and diff, adding a login, automations, and a phone-sized screen. The site's own browser tests pass in all three (two WebGL tests skip in Firefox).",
       },
     ],
   },
@@ -97,7 +97,7 @@ export const statusGroups: StatusGroup[] = [
       },
       {
         lead: "A personal subscription login for Claude Code",
-        text: "(legatus accounts login, or a login kept in the system keychain). The Linux runs used the credentials the test machine provides, with a separate configuration folder per login.",
+        text: "The Linux runs used the test machine's credentials, with a separate configuration folder per login. legatus accounts login and logins kept in the system keychain are untried.",
       },
       {
         lead: "A real pull request on GitHub",
@@ -118,7 +118,7 @@ export const statusGroups: StatusGroup[] = [
     id: "limits",
     title: "Known limits",
     icon: "info",
-    lead: "Things that are true today and are not bugs.",
+    lead: "Limits today.",
     items: [
       {
         lead: "Local only",
@@ -143,7 +143,7 @@ export const statusGroups: StatusGroup[] = [
 
 /** A shorter version for the compatibility box beside the install dialog. */
 export const compatibility: string[] = [
-  "Run for real through full runs: Codex CLI 0.162 on one Windows PC, and Claude Code 2.1.295 on Linux.",
+  "Run for real: Codex CLI 0.162 on a Windows PC, Claude Code 2.1.295 on Linux.",
   "Not run for real: a usage limit from Anthropic itself, a personal Claude Code login, a real pull request, macOS by hand, and Safari itself. Tests cover them with stand-ins on all three systems.",
   "Release builds are not code-signed yet.",
   "Legatus is not an operating-system sandbox, and the cockpit is local only.",

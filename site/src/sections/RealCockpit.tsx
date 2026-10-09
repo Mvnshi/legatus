@@ -50,13 +50,13 @@ export function RealCockpit() {
     <section className="section" id="cockpit" aria-labelledby="cockpit-title">
       <div className="wrap">
         <div className="section__head">
-          <p className="eyebrow">The real thing</p>
+          <p className="eyebrow">The real UI</p>
           <h2 id="cockpit-title">{realCockpit.title}</h2>
           <p className="section__lede">
-            <Inline text={realCockpit.lede} /> It listens only on your own computer and needs a secret key.
+            <Inline text={realCockpit.lede} />
           </p>
         </div>
-        <XPWindow layout="static" id="real-window" title="Legatus cockpit (screenshots)" icon="cockpit" active>
+        <XPWindow layout="static" id="real-window" title="Legatus cockpit" icon="cockpit" active>
           <XPTabs value={tab} onValueChange={setTab} className="real">
             <XPTabList label="Cockpit screens">
               {shots.map((s) => (

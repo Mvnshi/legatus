@@ -66,11 +66,6 @@ export function XPInstallDialog() {
         </div>
 
         <div className="xp-install__main">
-          <p className="xp-install__lead">
-            Pick your system, download one file, check it, and run <code>legatus demo</code>. The demo needs no agent and no
-            account.
-          </p>
-
           <fieldset className="xp-install__group">
             <legend>1. Your system</legend>
             <Radio.Root
@@ -119,7 +114,7 @@ export function XPInstallDialog() {
               </div>
             </dl>
             <p className="xp-install__hint">
-              After downloading, compare this value with the output of:
+              Compare it with the output of:
             </p>
             <CodeLine text={cmd.verify} label="Checksum command" />
           </fieldset>
@@ -129,8 +124,7 @@ export function XPInstallDialog() {
             <CodeLine text={cmd.unpack} label="Unpack command" />
             <CodeLine text={cmd.run} label="Run command" />
             <p className="xp-install__hint">
-              Real runs need <code>git</code> and a signed-in Codex CLI or Claude Code. See the compatibility notes beside this
-              dialog before you point Legatus at anything you care about.
+              Real runs need <code>git</code> and a signed-in Codex CLI or Claude Code.
             </p>
           </fieldset>
 

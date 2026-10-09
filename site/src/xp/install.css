@@ -34,11 +34,6 @@
   padding: 18px 20px 20px;
 }
 
-.xp-install__lead {
-  margin: 0 0 14px;
-  font-size: 16px;
-}
-
 .xp-install__group {
   margin: 0 0 14px;
   padding: 12px 14px 14px;
@@ -110,7 +105,7 @@
 
 .xp-install__hint {
   margin: 8px 0 4px;
-  font-size: 14px;
+  font-size: 15px;
   color: #3a4668;
 }
 

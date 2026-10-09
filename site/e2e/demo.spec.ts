@@ -142,7 +142,7 @@ test.describe("cockpit menus and tabs", () => {
     await openSite(page);
     const tabs = cockpit(page).getByRole("tablist", { name: "Run details" });
     await tabs.getByRole("tab", { name: "Checks", exact: true }).click();
-    await expect(cockpit(page).getByRole("tabpanel")).toContainText("Your checks run after the implementation");
+    await expect(cockpit(page).getByRole("tabpanel")).toContainText("A failing check goes back to the agent");
     await tabs.getByRole("tab", { name: "Checks", exact: true }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(tabs.getByRole("tab", { name: "Review", exact: true })).toHaveAttribute("aria-selected", "true");

@@ -10,10 +10,6 @@ export function Features() {
         <div className="section__head">
           <p className="eyebrow">What is in it</p>
           <h2 id="features-title">Built for work you will review before it ships</h2>
-          <p className="section__lede">
-            Legatus is a command-line program with a local web cockpit. Everything below is in the v0.1 release; what has and
-            has not been verified is listed further down.
-          </p>
         </div>
         <XPWindow layout="static" id="features-window" title="Legatus features" icon="folder" active>
           <ul className="features">

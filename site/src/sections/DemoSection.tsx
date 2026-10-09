@@ -21,7 +21,7 @@ export function DemoSection() {
           <Desktop />
         </div>
         <p className="demo-section__note">
-          <strong>{demoIntro.label}.</strong> {demoIntro.disclosure}
+          <strong>{demoIntro.label}.</strong> <Inline text={demoIntro.disclosure} />
         </p>
         <p className="demo-section__keys">{demoIntro.keyboard}</p>
       </div>

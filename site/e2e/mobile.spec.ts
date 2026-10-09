@@ -104,7 +104,7 @@ test.describe("phone layout", () => {
     const r = (await page.getByRole("group", { name: "Release information" }).boundingBox())!;
     expect(r.y).toBeGreaterThan(d.y + d.height - 1);
     expect(d.width).toBeGreaterThan(340);
-    const font = await dialog.locator(".xp-install__lead").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    const font = await dialog.locator(".xp-install__hint").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(font).toBeGreaterThanOrEqual(15);
   });
 });

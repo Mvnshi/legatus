@@ -177,7 +177,7 @@ function Overview({ state, goto, openWindow }: { state: DemoState; goto: (t: Coc
               ))}
             </p>
             <p className="checkpoint__text checkpoint__text--quiet">
-              The next login is told where things stand and continues from this commit.
+              The next login continues from this commit.
             </p>
           </div>
         </div>
@@ -235,7 +235,7 @@ function Journal({ state }: { state: DemoState }) {
         stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
       }}
     >
-      {state.journal.length === 0 ? <li className="journal__empty">Nothing yet. Press Start to begin the run.</li> : null}
+      {state.journal.length === 0 ? <li className="journal__empty">Nothing yet.</li> : null}
       {state.journal.map((l) => (
         <li key={l.id} className={`journal__line journal__line--${l.kind}`}>
           <time>{formatClock(l.at)}</time>
@@ -252,8 +252,7 @@ function Checks({ state }: { state: DemoState }) {
   return (
     <div className="checks">
       <p className="checks__lead">
-        Your checks run after the implementation. A failing check is sent back to the agent; only one heavy check runs at a
-        time across runs.
+        A failing check goes back to the agent. Only one heavy check runs at a time.
       </p>
       <ul className="checks__list">
         {state.checks.map((c) => (
@@ -293,17 +292,17 @@ function Review({ state }: { state: DemoState }) {
             </p>
             <p className="verdict__text">
               {state.verdict.independence === "other-provider"
-                ? "A different provider from the author, so the review is independent."
+                ? "A different provider from the author."
                 : ""}{" "}
-              Verdict: “{state.verdict.summary}”. The reviewer ran read-only; anything it had touched would have been reverted.
+              Verdict: “{state.verdict.summary}”. Read-only; anything it touched would have been reverted.
             </p>
           </div>
         </div>
       ) : (
         <p className="review__wait">
           {state.steps.review.status === "running"
-            ? "The reviewer is reading the diff, read-only."
-            : "The review comes last, after the checks. The reviewer is a different provider from the author when you have one, and a review with no clear verdict goes to a person."}
+            ? "Reading the diff."
+            : "Runs after the checks, read-only. A different provider reviews when there is one."}
         </p>
       )}
       <h4 className="section-label">Changes on {TASK.branch}</h4>
@@ -425,15 +424,15 @@ export function GuideBody({ state, reportOpened }: { state: DemoState; reportOpe
   const limit = limitHasHappened(state);
   const finished = state.phase === "done";
   const items: { done: boolean; title: string; text: ReactNode }[] = [
-    { done: started, title: "Start the sample task", text: "Press Start in the cockpit toolbar." },
+    { done: started, title: "Start the sample task", text: "Press Start." },
     {
       done: limit,
       title: "Hit a usage limit",
       text: limit
         ? `${state.limitSource === "injected" ? "You cut work-1 off" : "work-1 ran out"}; work-2 continues from a checkpoint.`
-        : "Press Inject limit while work-1 works, or let it run out.",
+        : "Press Inject limit, or let work-1 run out.",
     },
-    { done: finished, title: "Wait for checks and review", text: "A different agent reviews, read-only." },
+    { done: finished, title: "Wait for checks and review", text: "Another agent reviews it." },
     { done: reportOpened, title: "Open the report", text: "evidence.md is what you read before merging." },
   ];
   return (
@@ -472,8 +471,8 @@ export function NotesBody() {
   return (
     <div className="notes">
       <p className="notes__lead">
-        A short version of <a href={links.status} target="_blank" rel="noopener noreferrer">docs/STATUS.md</a>. If something is
-        not listed as verified, assume it has not been run for real.
+        From <a href={links.status} target="_blank" rel="noopener noreferrer">docs/STATUS.md</a>. Anything not listed as
+        verified has not been run for real.
       </p>
       {statusGroups
         .filter((g) => g.id === "real" || g.id === "not")

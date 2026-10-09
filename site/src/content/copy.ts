@@ -8,7 +8,7 @@ import type { XPIconName } from "../xp/icons";
 
 export const hero = {
   title: "Your agents. One command center.",
-  lede: "Queue coding tasks, isolate every change, and review the checks and diff in one local workspace.",
+  lede: "Run Codex and Claude Code side by side on your own logins. When one hits its usage limit, the work moves to the next.",
   primary: "Try the demo",
   secondary: "Download Legatus",
   facts: ["Open source", "Early software (v0.1)", "Builds for Windows, macOS and Linux"],
@@ -16,12 +16,12 @@ export const hero = {
 
 export const demoIntro = {
   title: "Watch a usage limit get handled",
-  lede: "A scripted run, played in your browser. It follows what `legatus demo` does with stand-in agents: the first login runs out halfway, the work is saved, another login continues, the checks run, and a different agent reviews it.",
+  lede: "The first login runs out halfway. The work is saved, the next login continues, the checks run, and a different agent reviews it.",
   label: "Simulated demo",
   disclosure:
-    "Nothing on this desktop runs Legatus or an agent. The names, files and hashes are sample data. To see the real engine do this, run legatus demo.",
+    "Nothing here runs an agent. Names, files and hashes are sample data. `legatus demo` runs the real engine with stand-in agents.",
   keyboard:
-    "Keyboard: Tab moves between controls. Focus a title bar and use the arrow keys to move a window (Shift for bigger steps). Escape closes a menu. The taskbar buttons minimize and restore windows.",
+    "Keyboard: Tab to move around. On a title bar, the arrow keys move the window (Shift for bigger steps). Escape closes a menu.",
 };
 
 export interface Move {
@@ -41,41 +41,41 @@ export const moves: Move[] = [
     icon: "queue",
     title: "Queue a task",
     summary: "From a sentence or a GitHub issue.",
-    body: "Describe the work, or point Legatus at a GitHub issue. Issue text is written by strangers, so it is fenced off and the agent is told not to take orders from it. `legatus serve` keeps a queue, runs several tasks at once, and picks up where it stopped after a restart.",
+    body: "Describe the work, or point Legatus at a GitHub issue. Issue text comes from strangers, so the agent is told not to take orders from it. `legatus serve` keeps a queue, runs several tasks at once, and resumes after a restart.",
     command: 'legatus queue "add input validation to the signup form" --check "npm test" --review',
-    inDemo: "The sample task is already queued. Press Start in the cockpit to run it.",
+    inDemo: "The sample task is queued. Press Start.",
   },
   {
     id: "isolate",
     icon: "branch",
     title: "Isolate every change",
     summary: "One branch and worktree per run.",
-    body: "Each run gets its own git branch, `legatus/<run id>`, in its own worktree, pinned to the commit it started from. Agents working in parallel never touch each other or your working copy.",
-    inDemo: "The cockpit's address bar shows the run's branch, legatus/7c1f4a90, and the report lists the files changed on it.",
+    body: "Each run gets its own git branch, `legatus/<run id>`, in its own worktree, pinned to the commit it started from. Parallel agents never touch each other or your working copy.",
+    inDemo: "The run's branch is legatus/7c1f4a90.",
   },
   {
     id: "continue",
     icon: "limit",
     title: "Keep going at a limit",
     summary: "Save the work, hand it on, or wait.",
-    body: "When a login hits its usage limit, whatever it wrote is committed on the run's branch and another login continues from there. If every login is out, the run waits for the first reset. A restart does not lose it.",
-    inDemo: "Press Inject limit. work-1 runs out, a checkpoint is committed, and work-2 carries on from it.",
+    body: "When a login hits its usage limit, whatever it wrote is committed on the run's branch and another login continues from there. If every login is out, the run waits for the first reset.",
+    inDemo: "Press Inject limit.",
   },
   {
     id: "check",
     icon: "review",
     title: "Check and review",
     summary: "Your checks, then a second opinion.",
-    body: "Your checks run, and a failure is sent back to the agent. A different provider, or at least a different login, reviews the change read-only; anything a reviewer touches is reverted. A review without a clear verdict goes to a person and is never treated as an approval.",
-    inDemo: "The Checks tab runs two sample checks, and the Review tab shows an independent verdict from another provider.",
+    body: "Your checks run, and a failure goes back to the agent. A different provider, or at least a different login, reviews the change read-only; anything a reviewer touches is reverted. A review without a clear verdict goes to a person, never counted as approval.",
+    inDemo: "See the Checks and Review tabs.",
   },
   {
     id: "read",
     icon: "report",
     title: "Read it in one place",
     summary: "A branch and a report.",
-    body: "You get the branch and a report, `evidence.md`: which login did what, the check results, the reviewer's verdict, every usage limit that was hit, anything removed from prompts, and the files that changed. Nothing is pushed or published unless you ask for that run.",
-    inDemo: "When the run reaches “Ready for your review”, open evidence.md. It is laid out like the real report.",
+    body: "You get the branch and a report, `evidence.md`: which login did what, the check results, the verdict, every usage limit hit, anything removed from prompts, and the files changed. Nothing is pushed or published unless you ask for that run.",
+    inDemo: "Open evidence.md when the run is ready.",
   },
 ];
 
@@ -89,22 +89,22 @@ export const features: Feature[] = [
   {
     icon: "logins",
     title: "A pool of your own logins",
-    body: "Each login lives in its own folder and is signed in with the agent's own login command. Legatus never sees a password. Work goes to a login that still has usage.",
+    body: "Each login has its own folder and signs in with the agent's own login command. Legatus never sees a password. Work goes to a login that still has usage.",
   },
   {
     icon: "review",
     title: "Independent review",
-    body: "A different provider, or at least a different login, reviews read-only. Whatever a reviewer touches is reverted, and no verdict is never an approval.",
+    body: "A different provider, or at least a different login, reviews read-only. Anything it touches is reverted. No clear verdict goes to a person.",
   },
   {
     icon: "lock",
     title: "Safe by default",
-    body: "Secrets are removed before anything is stored. Agents get a scrubbed environment. The agent's own sandbox is checked before work is sent. Nothing is published unless you ask.",
+    body: "Secrets are removed before anything is stored. Agents get a scrubbed environment and their own sandbox, checked before work starts. Nothing is published unless you ask.",
   },
   {
     icon: "cockpit",
     title: "A cockpit that stays on your machine",
-    body: "Runs, a live journal, reports, diffs, logins and reset countdowns, on a phone-sized screen too. It listens only on your own computer, and every request needs a secret key.",
+    body: "Runs, a live journal, reports, diffs, logins and reset countdowns, on a phone-sized screen too. It listens only on your own computer and every request needs a secret key.",
   },
   {
     icon: "branch",
@@ -114,13 +114,13 @@ export const features: Feature[] = [
   {
     icon: "queue",
     title: "Tasks that start themselves",
-    body: "Schedules, and a watcher for labelled issues that only accepts authors you list. Heavy checks run one at a time, so a queue of tasks does not use up your memory.",
+    body: "Schedules, and a watcher for labelled issues that only accepts authors you list. Heavy checks run one at a time, so a long queue does not eat your memory.",
   },
 ];
 
 export const realCockpit = {
-  title: "The real cockpit",
-  lede: "These are screenshots of the local cockpit that `legatus serve` opens in your browser, driven by stand-in agents.",
+  title: "The cockpit",
+  lede: "What `legatus serve` opens in your browser. The agents here are stand-ins.",
 };
 
 export const links = {

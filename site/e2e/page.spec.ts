@@ -43,7 +43,7 @@ test.describe("deployment path and first view", () => {
   test("shows the headline, explanation and both actions without any interaction, and no boot screen", async ({ page }) => {
     await page.goto("./");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText("Queue coding tasks, isolate every change, and review the checks and diff in one local workspace.")).toBeVisible();
+    await expect(page.getByText("Run Codex and Claude Code side by side on your own logins. When one hits its usage limit, the work moves to the next.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Try the demo" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Download Legatus" })).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -193,7 +193,7 @@ test.describe("content", () => {
     await expect(footer).toContainText("Use only your own logins");
     await expect(footer).toContainText("THIRD_PARTY.md");
     await expect(footer).toContainText("Microsoft");
-    await expect(page.locator(".hero")).not.toContainText(/MIT|licen[sc]e/i);
+    await expect(page.locator(".hero")).not.toContainText(/\bMIT\b|licen[sc]e/i);
     await expect(page.locator("#install")).not.toContainText(/MIT license/i);
   });
 
