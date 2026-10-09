@@ -75,7 +75,7 @@ func TestCreateCommitAndDiff(t *testing.T) {
 	}
 }
 
-// Cezar's open issue #1301: parallel runs fail worktree creation on a .git/config lock.
+// Parallel runs must not fail creating their worktrees with "could not lock config file".
 func TestManyWorktreesAtOnce(t *testing.T) {
 	repo := newRepo(t)
 	m := New()

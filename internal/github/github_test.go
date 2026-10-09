@@ -107,8 +107,8 @@ func argsOf(call map[string]any) string {
 func TestParseRef(t *testing.T) {
 	good := map[string]Ref{
 		"Mvnshi/codex-subscription-router#14":                {"Mvnshi", "codex-subscription-router", 14},
-		"https://github.com/open-mercato/cezar/issues/1300":  {"open-mercato", "cezar", 1300},
-		"https://github.com/open-mercato/cezar/issues/1300/": {"open-mercato", "cezar", 1300},
+		"https://github.com/example-org/project/issues/1300":  {"example-org", "project", 1300},
+		"https://github.com/example-org/project/issues/1300/": {"example-org", "project", 1300},
 		"a/b.c#1":   {"a", "b.c", 1},
 		"  o/r#7  ": {"o", "r", 7},
 		"#12":       {"", "", 12},

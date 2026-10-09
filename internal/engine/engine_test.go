@@ -170,8 +170,7 @@ func TestASimpleRunSucceedsAndCommitsTheWork(t *testing.T) {
 	}
 }
 
-// The behaviour Cezar's issue #1300 asks for: a usage limit does not stop the workflow; the work moves to
-// another login and every remaining step still runs.
+// A usage limit does not stop the workflow: the work moves to another login and every remaining step still runs.
 func TestUsageLimitMidTaskContinuesOnAnotherLoginAndFinishesTheWorkflow(t *testing.T) {
 	var h *harness
 	be := fake.New("codex", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
