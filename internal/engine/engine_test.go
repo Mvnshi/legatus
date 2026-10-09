@@ -401,6 +401,32 @@ func TestReviewWithOnlyOneLoginSaysSoInTheEvidence(t *testing.T) {
 	}
 }
 
+// A review step that does not say "other-than:implement" (agent: any, or a named provider) used to record
+// an empty independence, which showed up as "approve ()" and "(): ..." in the summary and evidence.md.
+func TestAReviewThatDidNotAskForIndependenceStillSaysHowIndependentItWas(t *testing.T) {
+	be := fake.New("codex", func(ctx context.Context, req agent.Request, call int, emit func(agent.Event)) (agent.Result, error) {
+		if req.Role == "review" {
+			return agent.Result{Summary: `{"verdict":"approve","summary":"ok"}`}, nil
+		}
+		return fake.WriteFile(ctx, req, call, emit)
+	})
+	h := newHarness(t, codexAccounts("only"), be)
+	wf := workflow.Default(nil, true)
+	wf.Steps[len(wf.Steps)-1].Agent = "any"
+	run := h.run(wf, "add notes")
+	review := run.Steps[len(run.Steps)-1]
+	if run.Status != model.Succeeded || strings.Contains(review.Summary, "()") || !strings.Contains(review.Summary, "same-account") {
+		t.Fatalf("status %s, review = %q", run.Status, review.Summary)
+	}
+	evidence, err := os.ReadFile(filepath.Join(h.store.Dir(), "runs", run.ID, "evidence.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(evidence), "()") || !strings.Contains(string(evidence), "(same-account)") {
+		t.Fatalf("evidence.md names no independence:\n%s", evidence)
+	}
+}
+
 func TestSecretsInTheTaskNeverReachTheAgentAndTheEnvironmentIsScrubbed(t *testing.T) {
 	be := fake.New("codex", nil)
 	h := newHarness(t, codexAccounts("a"), be)

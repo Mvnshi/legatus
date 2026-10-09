@@ -26,6 +26,39 @@ func TestIsLimitMessage(t *testing.T) {
 	}
 }
 
+// These are the messages Claude Code 2.1.295 builds (read from its own program text, see docs/STATUS.md),
+// with a made-up time. The first form is "You've hit your <name of the limit> · resets <time> (<zone>)".
+func TestIsLimitMessageKnowsWhatClaudeCodePrints(t *testing.T) {
+	for _, s := range []string{
+		"You've hit your session limit · resets 3pm (America/New_York)",
+		"You've hit your weekly limit · resets Oct 12, 3pm (America/New_York)",
+		"You've hit your Opus limit · resets 9:30am (Europe/London)",
+		"You've hit your Sonnet limit · resets 3pm (UTC)",
+		"You've hit your org's monthly spend limit · ask your admin to raise it",
+		"You've hit your team's shared budget. /model to switch models.",
+		"You're out of usage credits. Run /usage-credits to keep using it",
+		"Your org is out of usage · add funds to continue",
+		"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing.",
+	} {
+		if !IsLimitMessage(s) {
+			t.Errorf("a login limit that Claude Code prints was not recognised: %q", s)
+		}
+	}
+}
+
+// "Server is temporarily limiting requests (not your usage limit)" means the service is throttling
+// everyone. Setting a working login aside for hours because of it would be wrong.
+func TestAServerThrottleIsNotALoginLimit(t *testing.T) {
+	for _, s := range []string{
+		"Server is temporarily limiting requests (not your usage limit)",
+		"API Error: Server is temporarily limiting requests (not your usage limit) · retrying",
+	} {
+		if IsLimitMessage(s) {
+			t.Errorf("a server throttle was taken for a login limit: %q", s)
+		}
+	}
+}
+
 func TestParseReset(t *testing.T) {
 	// Wednesday 7 October 2026, 14:00 in a zone that is not UTC.
 	zone := time.FixedZone("EDT", -4*3600)
@@ -56,9 +89,44 @@ func TestParseReset(t *testing.T) {
 			t.Errorf("ParseReset(%q) = %v, want %v", c.msg, got, c.want)
 		}
 	}
-	for _, msg := range []string{"usage limit reached", "something else entirely", "try again at 25:99 PM", "Claude usage limit reached|1000000000"} {
+	for _, msg := range []string{
+		"usage limit reached", "something else entirely", "try again at 25:99 PM", "Claude usage limit reached|1000000000",
+		"You've hit your session limit · resets 3pm (Not/AZone)", // a zone this machine cannot load: say "unknown", do not guess
+	} {
 		if got := ParseReset(msg, now); !got.IsZero() {
 			t.Errorf("ParseReset(%q) = %v, want zero (unknown)", msg, got)
+		}
+	}
+}
+
+// Claude Code writes "resets 3pm (America/New_York)": a clock time in the zone it names, which is not
+// necessarily the zone Legatus runs in. Reading it in Legatus's zone would be hours wrong.
+func TestParseResetReadsTheZoneClaudeCodeNames(t *testing.T) {
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 2:00 pm in New York on 7 October 2026, written in UTC.
+	now := time.Date(2026, 10, 7, 14, 0, 0, 0, ny).UTC()
+	cases := []struct {
+		msg  string
+		want time.Time
+	}{
+		{"You've hit your session limit · resets 3pm (America/New_York)", time.Date(2026, 10, 7, 15, 0, 0, 0, ny)},
+		{"You've hit your session limit · resets 1pm (America/New_York)", time.Date(2026, 10, 8, 13, 0, 0, 0, ny)},
+		{"You've hit your Opus limit · resets 9:30am (America/New_York)", time.Date(2026, 10, 8, 9, 30, 0, 0, ny)},
+		{"You've hit your weekly limit · resets Oct 12, 3pm (America/New_York)", time.Date(2026, 10, 12, 15, 0, 0, 0, ny)},
+		{"You've hit your weekly limit · resets Oct 12 at 3pm (America/New_York)", time.Date(2026, 10, 12, 15, 0, 0, 0, ny)},
+		{"You've hit your weekly limit · resets Jan 5, 2027, 8am (Asia/Tokyo)", time.Date(2027, 1, 5, 8, 0, 0, 0, tokyo)},
+		{"You've hit your session limit · resets 3pm (UTC)", time.Date(2026, 10, 8, 15, 0, 0, 0, time.UTC)}, // 18:00 UTC has passed 3pm
+	}
+	for _, c := range cases {
+		if got := ParseReset(c.msg, now); !got.Equal(c.want) {
+			t.Errorf("ParseReset(%q) = %v, want %v", c.msg, got, c.want)
 		}
 	}
 }

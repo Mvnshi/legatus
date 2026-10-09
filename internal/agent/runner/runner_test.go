@@ -51,6 +51,10 @@ func runHelper() int {
 	case "wait":
 		fmt.Fprintln(os.Stdout, "ready")
 		time.Sleep(time.Minute)
+	case "sleep":
+		time.Sleep(time.Minute)
+	case "escape":
+		return startEscapee()
 	}
 	return 0
 }

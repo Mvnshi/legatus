@@ -21,7 +21,7 @@ internal/engine      walks a run through its workflow (steps, limits, review, ev
 internal/pool        accounts, leases, limits, scheduling
 internal/agent       the Backend interface, limit-message parsing
   agent/codex        codex exec --json
-  agent/claude       claude -p --output-format stream-json   (unverified against a real install)
+  agent/claude       claude -p --output-format stream-json   (run for real with Claude Code 2.1.295 on Linux)
   agent/runner       starts a process, streams stdout, kills the whole tree on cancel
   agent/fake         scriptable stand-in, used by tests and `legatus demo`
 internal/workflow    the YAML format and its validation

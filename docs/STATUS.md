@@ -32,17 +32,51 @@ On one Windows PC:
   live journal, report and diff, adding and switching logins, submitting a task from the form and watching it
   finish, the automations page, and a phone-sized screen.
 
+On Linux (x64, Ubuntu 24.04, in a cloud container, October 2026):
+
+- **Claude Code 2.1.295** ran through Legatus end to end: `legatus run` with an agent step, a check and a review step
+  (branch, commit, report; the review was run by the same login, as only one was set up), a check that failed and
+  sent the work back, and the daemon (`serve` and `queue`) working two logins at once, each with its own
+  `CLAUDE_CONFIG_DIR`. What it printed is kept in `internal/agent/claude/testdata/` and read by the tests. All of
+  these logins used this container's own credentials, not a personal subscription (see below).
+- **Cancel** stops the agent and the shell command it started. Running it for real showed that the command was left
+  running, because Claude Code starts commands in a session of its own; Legatus now also stops everything the agent
+  started, and a test covers it.
+- **A usage limit, with the real Claude Code on the receiving end.** A local stand-in for the Anthropic API refused a
+  request the way an exhausted login is refused (HTTP 429 with the `anthropic-ratelimit-unified-*` headers). What
+  Claude Code printed in answer is real: a `rate_limit_event` with status `rejected` and the exact reset time,
+  `You've hit your session limit · resets 8:54pm (UTC)`, exit code 1. Legatus set that login aside until the exact
+  time in the event and carried on with the second login, both when the refusal came at the first request and when
+  it came mid-task, after the agent had run a command: the half-finished work was committed, the next login was told
+  about it, and it finished the job. Only the server's refusal was simulated.
+- The wording of Claude Code's other limit messages (a weekly or model limit, a monthly spend limit, a team budget,
+  the service throttling everyone, which is not a login limit) was read from the program itself rather than provoked.
+  Two bugs came out of that: the real wording `You've hit your session limit` was not recognised as a limit, and the
+  throttle message `Server is temporarily limiting requests (not your usage limit)` was. The reset time Claude Code
+  prints names its time zone (`resets 3pm (America/New_York)`), which was being read in the wrong one.
+- The cockpit (`legatus serve --demo`) was driven in Chromium 141, Firefox 157 and the WebKit 27.2 build that
+  Playwright ships for Linux: opening it with its key, submitting a task, the live journal, report and diff, the
+  filter, adding a login, the automations page, and a phone-sized screen. This found one bug (the login-name field's
+  `pattern` was not a valid regular expression, so browsers logged an error and checked nothing). WebKit also logs a
+  content-policy message for every `<select>`; it reproduces on a page with no Legatus code and changes nothing on
+  screen.
+- The project site's browser tests pass in Firefox (all but two that need WebGL, which headless Firefox here lacks and
+  which skip) and in that WebKit build.
+
 ## Not verified yet
 
-- **Claude Code.** The backend is written from Claude Code's documented interface and tested against scripted
-  output only. It has never been run against a real install.
-- **A real usage-limit message.** The parser is tolerant of the wordings agents use, but it was written from
-  documented and remembered messages, not captured from a real limit. If the reset time cannot be read, the login
-  is set aside for 30 minutes.
-- **A real second login and a real mid-task limit.**
-- **A real pull request on GitHub.** The flow is tested, but nothing has been opened on a real repository.
-- **macOS and Linux by hand.** The tests run there in CI; nothing has been driven by a person.
-- **Firefox and Safari** for the cockpit.
+- **A real usage limit.** Claude Code was run against a refusal simulated by a local server, because a login cannot be
+  run out of usage on demand: how it reacts is real, what the Anthropic service sends for a real limit is not
+  captured. Codex's limit messages were written from documented and remembered wordings and never captured. If the
+  reset time cannot be read, the login is set aside for 30 minutes.
+- **A personal subscription login for Claude Code** (`legatus accounts login`, or a login kept in the system keychain).
+  The runs above used the credentials this container provides, with a separate configuration folder per login.
+- **A real pull request on GitHub.** The flow is tested, but nothing has been opened on a real repository, and the
+  `gh` in the container used for the runs above has no valid sign-in.
+- **macOS by hand, and Claude Code on Windows and macOS.** The tests run there in CI; nothing has been driven by a
+  person. Codex was run for real only on Windows.
+- **Safari itself.** The cockpit and the site ran in Firefox and in Playwright's WebKit build on Linux, not in Apple's
+  Safari.
 - **Codex's own Windows sandbox** (see below).
 
 ## Sandboxing
@@ -62,5 +96,6 @@ does.
 - The daemon listens only on the local computer. There is no login or encryption for reaching it from another
   device, so it is not for sharing or for a server yet.
 - Only Codex and Claude Code are supported as agents.
-- Agent limits are parsed from error text. A change in an agent's wording can make a limit look like an ordinary
-  failure until the parser is updated.
+- Agent limits are read from the agent's output: for Claude Code its `rate_limit_event`, then its message. A change
+  in an agent's wording can make a limit look like an ordinary failure until the parser is updated. Only Claude Code
+  2.1.295 was run for real; `legatus doctor` says so for any other version.

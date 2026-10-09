@@ -641,3 +641,46 @@ func TestTheCockpitScriptParses(t *testing.T) {
 		t.Fatalf("app.js does not parse:\n%s", out)
 	}
 }
+
+// A form field's pattern attribute is compiled by the browser with the "v" flag, where a bare "-" at the end of
+// a character class is a syntax error. The browser then logs an error and silently checks nothing. Chromium
+// printed exactly that for the login name until this test was written.
+func TestEveryPatternInTheCockpitCompilesAsABrowserCompilesIt(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not installed")
+	}
+	data, err := uiFiles.ReadFile("ui/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	app := filepath.Join(dir, "app.js")
+	if err := os.WriteFile(app, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(dir, "patterns.js")
+	if err := os.WriteFile(script, []byte(`
+try { new RegExp('', 'v'); } catch (e) { console.log('skip'); process.exit(0); }
+const src = require('fs').readFileSync(process.argv[2], 'utf8');
+let n = 0;
+for (const m of src.matchAll(/pattern:\s*('(?:[^'\\]|\\.)*')/g)) {
+  const value = Function('return ' + m[1])();
+  new RegExp('^(?:' + value + ')$', 'v');
+  n++;
+}
+console.log(n);
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(node, script, app).CombinedOutput()
+	if err != nil {
+		t.Fatalf("a pattern in app.js is not a valid regular expression for a browser:\n%s", out)
+	}
+	switch got := strings.TrimSpace(string(out)); got {
+	case "skip":
+		t.Skip("this node does not know the v flag")
+	case "0":
+		t.Fatal("no pattern attribute was found in app.js: the test no longer checks anything")
+	}
+}
