@@ -68,7 +68,7 @@ func cmdServe(args []string, stdout, stderr io.Writer) int {
 		Log: func(format string, args ...any) { fmt.Fprintf(stderr, "legatus: "+format+"\n", args...) },
 	}
 	srv := &server.Server{
-		App: a, Sched: sched, Hub: h, Token: token, Version: Version,
+		App: a, Sched: sched, Hub: h, Token: token, Version: currentVersion(),
 		Runner: runner, AutomationsFile: filepath.Join(a.Root, "automations.yaml"),
 	}
 

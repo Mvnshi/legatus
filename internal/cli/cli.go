@@ -47,7 +47,7 @@ func Main(args []string, stdout, stderr io.Writer) int {
 	cmd, rest := args[0], args[1:]
 	switch cmd {
 	case "version", "--version":
-		fmt.Fprintln(stdout, "legatus", Version)
+		fmt.Fprintln(stdout, "legatus", currentVersion())
 		return 0
 	case "run":
 		return cmdRun(rest, stdout, stderr)
