@@ -54,6 +54,9 @@ On Linux (x64, Ubuntu 24.04, in a cloud container, October 2026):
   Two bugs came out of that: the real wording `You've hit your session limit` was not recognised as a limit, and the
   throttle message `Server is temporarily limiting requests (not your usage limit)` was. The reset time Claude Code
   prints names its time zone (`resets 3pm (America/New_York)`), which was being read in the wrong one.
+- **`legatus pr --draft`** pushed a run's branch to a real GitHub repository. Its next step, `gh pr create`, was refused by
+  this container's GitHub proxy (it blocks GraphQL, which `gh pr create` uses), and Legatus said so in plain words. The
+  pull request was then opened from the pushed branch with a different tool, using the title and report Legatus made.
 - The cockpit (`legatus serve --demo`) was driven in Chromium 141, Firefox 157 and the WebKit 27.2 build that
   Playwright ships for Linux: opening it with its key, submitting a task, the live journal, report and diff, the
   filter, adding a login, the automations page, and a phone-sized screen. This found one bug (the login-name field's
@@ -71,8 +74,9 @@ On Linux (x64, Ubuntu 24.04, in a cloud container, October 2026):
   reset time cannot be read, the login is set aside for 30 minutes.
 - **A personal subscription login for Claude Code** (`legatus accounts login`, or a login kept in the system keychain).
   The runs above used the credentials this container provides, with a separate configuration folder per login.
-- **A real pull request on GitHub.** The flow is tested, but nothing has been opened on a real repository, and the
-  `gh` in the container used for the runs above has no valid sign-in.
+- **A real pull request opened by Legatus.** The push to a real repository worked. `gh pr create` has never succeeded
+  against one: the container used for the runs above could not run it, and the rest of the flow is tested against a
+  scripted `gh`.
 - **macOS by hand, and Claude Code on Windows and macOS.** The tests run there in CI; nothing has been driven by a
   person. Codex was run for real only on Windows.
 - **Safari itself.** The cockpit and the site ran in Firefox and in Playwright's WebKit build on Linux, not in Apple's

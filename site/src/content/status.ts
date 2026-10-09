@@ -76,6 +76,10 @@ export const statusGroups: StatusGroup[] = [
         text: "A local stand-in for the Anthropic API refused a request the way an exhausted login is refused, and the real Claude Code answered. Legatus set that login aside until the reset in its event and carried on with the second login, also when the refusal came mid-task.",
       },
       {
+        lead: "Pushing a run's branch (Linux)",
+        text: "legatus pr pushed a branch to a real GitHub repository. Opening the pull request itself was refused by the test machine's GitHub proxy, so that step is still untried.",
+      },
+      {
         lead: "Cancel (Linux)",
         text: "stops the agent and the shell command it started. The first real try found a command left running; that is fixed.",
       },
@@ -100,8 +104,8 @@ export const statusGroups: StatusGroup[] = [
         text: "The Linux runs used the test machine's credentials, with a separate configuration folder per login. legatus accounts login and logins kept in the system keychain are untried.",
       },
       {
-        lead: "A real pull request on GitHub",
-        text: "The flow is tested, but nothing has been opened on a real repository.",
+        lead: "A real pull request opened by Legatus",
+        text: "The push to a real repository worked. gh pr create has never succeeded against one; the rest of the flow is tested against a scripted gh.",
       },
       {
         lead: "macOS by hand, and Claude Code on Windows and macOS",
@@ -144,7 +148,7 @@ export const statusGroups: StatusGroup[] = [
 /** A shorter version for the compatibility box beside the install dialog. */
 export const compatibility: string[] = [
   "Run for real: Codex CLI 0.162 on a Windows PC, Claude Code 2.1.295 on Linux.",
-  "Not run for real: a usage limit from Anthropic itself, a personal Claude Code login, a real pull request, macOS by hand, and Safari itself. Tests cover them with stand-ins on all three systems.",
+  "Not run for real: a usage limit from Anthropic itself, a personal Claude Code login, a pull request opened by Legatus itself, macOS by hand, and Safari itself. Tests cover them with stand-ins on all three systems.",
   "Release builds are not code-signed yet.",
   "Legatus is not an operating-system sandbox, and the cockpit is local only.",
 ];
