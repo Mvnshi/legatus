@@ -1,0 +1,175 @@
+.desktop {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 6px;
+  font-family: var(--font-ui);
+  color: var(--ink-on-cream);
+  background: #2f78e3;
+}
+
+.desktop--floating {
+  height: clamp(640px, 78svh, 760px);
+}
+
+.desktop__area {
+  position: absolute;
+  inset: 0 0 var(--taskbar-h) 0;
+  overflow: hidden;
+}
+
+/* ---------- Desktop icons (a column on a wide desktop, a row of tiles on a phone) ---------- */
+.deskicons {
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  bottom: calc(var(--taskbar-h) + 8px);
+  z-index: 1;
+  width: 104px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.deskicon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 82px;
+  padding: 6px 4px;
+  font: 13px/1.25 var(--font-ui);
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-shadow: none;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.deskicon span {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(8, 36, 106, 0.62);
+  text-shadow: 0 1px 1px rgba(0, 0, 40, 0.7);
+  font-size: 12.5px;
+  overflow-wrap: break-word;
+}
+
+.deskicon .xp-icon {
+  filter: drop-shadow(0 2px 3px rgba(0, 20, 80, 0.55));
+}
+
+.deskicon:hover,
+.deskicon:focus-visible {
+  background: rgba(49, 106, 197, 0.45);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: none;
+}
+
+.deskicon:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -3px;
+}
+
+.desktop--floating .deskicons {
+  /* The icons live on the left; windows start to their right. */
+  pointer-events: auto;
+}
+
+/* ---------- Narrow desktops: no icon column, the windows get the room ---------- */
+@media (max-width: 1099px) {
+  .desktop--floating .deskicons {
+    display: none;
+  }
+}
+
+/* ---------- Stacked (phone) desktop ---------- */
+.desktop--stacked {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.desktop__banner {
+  position: relative;
+  z-index: 2;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 12px 0;
+  padding: 6px 10px;
+  font: 13.5px/1.3 var(--font-ui);
+  color: #1c1400;
+  background: #ffffe1;
+  border: 1px solid #000;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.desktop--stacked .deskicons {
+  position: relative;
+  inset: auto;
+  width: auto;
+  margin: 12px 12px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  overflow: visible;
+}
+
+.desktop--stacked .deskicon {
+  min-height: 84px;
+}
+
+.desktop--stacked .desktop__area {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 12px 18px;
+  overflow: visible;
+}
+
+.desktop--stacked .xp-taskbar {
+  position: sticky;
+  bottom: 0;
+}
+
+.desktop__balloon {
+  position: absolute;
+  inset: 0 0 var(--taskbar-h) 0;
+  z-index: 150;
+  pointer-events: none;
+}
+
+.desktop--stacked .desktop__balloon {
+  position: sticky;
+  inset: auto;
+  bottom: var(--taskbar-h);
+  height: 0;
+}
+
+.desktop--stacked .desktop__balloon .xp-balloon-region {
+  bottom: 12px;
+}
+
+/* When the boot screen is up, the rest of the desktop is inert to the eye and the keyboard. */
+.desktop.is-booting > :not(.boot) {
+  visibility: hidden;
+}
+
+/* ---------- The frame around the whole demo ---------- */
+.demo-section__frame .desktop {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}

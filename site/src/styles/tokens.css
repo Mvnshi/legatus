@@ -1,0 +1,49 @@
+:root {
+  color-scheme: light;
+
+  /* Luna blues */
+  --luna-navy: #0a246a;
+  --luna-deep: #0b3ba8;
+  --luna-blue: #245edb;
+  --luna-bright: #3a82ee;
+  --luna-sky: #8bbcf3;
+  --luna-pale: #d6e3f8;
+
+  /* Surfaces */
+  --cream: #ece9d8;
+  --cream-light: #f6f4ea;
+  --cream-dark: #d6d2c2;
+  --inset-line: #7f9db9;
+  --white: #fff;
+  --page: #e3edfb;
+
+  /* Text. Every pair used in the page was checked for at least 4.5:1 contrast. */
+  --ink: #16213e;
+  --ink-soft: #3a4668;
+  --ink-on-cream: #1f2430;
+  --link: #0a46c4;
+
+  /* Status colours (always paired with an icon or a word, never colour alone) */
+  --ok: #1c7d20;
+  --ok-bg: #e2f6dc;
+  --warn: #8a4b00;
+  --warn-bg: #fff0d1;
+  --bad: #a31c10;
+  --info: #0b3ba8;
+
+  /* Start green */
+  --start-top: #5fc15f;
+  --start-mid: #3c9c3c;
+  --start-bottom: #2b7f2b;
+
+  --focus: #0a246a;
+  --focus-on-blue: #ffffff;
+
+  --font-ui: Tahoma, "Segoe UI", "Noto Sans", Verdana, system-ui, sans-serif;
+  --font-title: "Trebuchet MS", Tahoma, "Segoe UI", "Noto Sans", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+
+  --header-h: 60px;
+  --taskbar-h: 44px;
+  --win-shadow: 0 12px 28px -6px rgba(0, 26, 100, 0.42), 0 3px 8px rgba(0, 26, 100, 0.3);
+}

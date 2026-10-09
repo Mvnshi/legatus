@@ -5,6 +5,13 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and t
 
 ## [Unreleased]
 
+### Changed
+
+- The project website (`site/`) is rebuilt as a React, TypeScript and Vite app styled after Windows XP's Luna theme,
+  served from `/legatus/`. It has a playable, clearly labelled "Simulated demo" of a usage limit being handled, real
+  release information beside the install steps, and the verification limits from `docs/STATUS.md`. The Go program
+  and the local cockpit are unchanged.
+
 ## [0.1.0] - 2026-10-09
 
 First public release. Early software: [docs/STATUS.md](docs/STATUS.md) says what has and has not been verified.

@@ -1,0 +1,41 @@
+.wallpaper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #2f78e3;
+  pointer-events: none;
+}
+
+.wallpaper__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The shader only reaches the sky, fades out before the hills, and blends softly so it can never fight the art. */
+.wallpaper__shader {
+  position: absolute;
+  inset: 0 0 38% 0;
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent);
+  mask-image: linear-gradient(#000 55%, transparent);
+  animation: wallpaper-in 1.4s ease-out both;
+}
+
+@keyframes wallpaper-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallpaper__shader {
+    display: none;
+  }
+}

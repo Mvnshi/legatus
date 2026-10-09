@@ -1,0 +1,235 @@
+/* ---------- The window ---------- */
+.xp-win {
+  position: relative;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-on-cream);
+  text-align: left;
+  border-radius: 9px 9px 0 0;
+  box-shadow: var(--win-shadow);
+  outline: none;
+}
+
+.xp-win--floating {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-shadow: none;
+  will-change: transform;
+}
+
+/* The shadow belongs to the part that flies to the taskbar, so a minimized window leaves nothing behind. */
+.xp-win__fly {
+  height: 100%;
+  transform-origin: 50% 50%;
+  border-radius: 9px 9px 0 0;
+  box-shadow: var(--win-shadow);
+}
+
+.xp-win--floating:not(.is-active) .xp-win__fly {
+  box-shadow: 0 8px 18px -6px rgba(0, 26, 100, 0.3), 0 2px 5px rgba(0, 26, 100, 0.2);
+}
+
+.xp-win__body.body--tight {
+  padding: 10px;
+}
+
+/* XP.css draws the blue frame on .window with inset shadows; this only sets up the layout inside it. */
+.xp-win .xp-win__frame.window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: inherit;
+  padding: 0 0 4px;
+  background: var(--cream);
+}
+
+.xp-win--stacked .xp-win__frame.window,
+.xp-win--static .xp-win__frame.window {
+  height: auto;
+}
+
+/* ---------- Title bar ---------- */
+.xp-win .title-bar {
+  box-sizing: border-box;
+  flex: none;
+  height: 34px;
+  padding: 4px 6px 4px 8px;
+  font-family: var(--font-title);
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.xp-win--floating .title-bar[data-drag-handle] {
+  cursor: move;
+  touch-action: none;
+}
+
+.xp-win .title-bar-text {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin-right: 12px;
+  padding-left: 0;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.xp-win .title-bar-text > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xp-win .title-bar-text .xp-icon {
+  flex: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 40, 0.45));
+}
+
+.xp-win .title-bar-controls {
+  flex: none;
+  align-items: center;
+}
+
+/* XP's caption buttons are 21px. WCAG 2.2 asks for 24px targets, so they are drawn at 24px (the art is SVG). */
+.xp-win .title-bar-controls button {
+  min-width: 24px;
+  min-height: 24px;
+  width: 24px;
+  height: 24px;
+  margin-left: 3px;
+  background-size: 24px 24px;
+}
+
+.xp-win .title-bar-controls button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.xp-win .title-bar:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -3px;
+}
+
+/* Inactive windows go pale, as in Luna. */
+.xp-win .title-bar.is-inactive {
+  background: linear-gradient(180deg, #a9c1f0, #7e9bde 8%, #7b97dc 40%, #7b97dc 88%, #8aa4e3 93%, #6a86cf 95%, #5e7ac2 96%, #5e7ac2);
+  border-top-color: #5a74be;
+  border-left-color: #5a74be;
+  border-right-color: #4a63a8;
+  text-shadow: 1px 1px #3a4f94;
+}
+
+.xp-win .title-bar.is-inactive .title-bar-text {
+  color: #f1f5ff;
+}
+
+.xp-win--static .title-bar {
+  cursor: default;
+}
+
+/* ---------- Body, menu, status ---------- */
+.xp-win__collapse {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.xp-win__collapse-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.xp-win__body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--cream);
+}
+
+.xp-win__body.body--flush {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.xp-win__status.status-bar {
+  flex: none;
+  margin: 0 3px;
+  padding: 3px 1px;
+  background: var(--cream);
+  font-size: 13px;
+}
+
+.xp-win__status .status-bar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.3;
+  color: #2a2f3d;
+}
+
+/* ---------- Stacked (phone) windows ---------- */
+.xp-win--stacked,
+.xp-win--static {
+  width: 100%;
+}
+
+.xp-win--stacked .title-bar {
+  height: auto;
+  min-height: 46px;
+  padding: 5px 8px 5px 10px;
+  font-size: 16px;
+}
+
+/* A phone has no room for a long title on one line, and the title says "Simulated demo". Let it wrap. */
+.xp-win--stacked .title-bar-text,
+.xp-win--stacked .title-bar-text > span {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.xp-win--stacked .title-bar-controls button {
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  margin-left: 6px;
+  background-size: 100% 100%;
+}
+
+.xp-win--stacked .title-bar-text {
+  font-size: 16px;
+}
+
+.xp-win--stacked.is-minimized .xp-win__collapse {
+  grid-template-rows: 0fr;
+}
+
+.xp-win--stacked .xp-win__body {
+  overflow: visible;
+}
+
+.xp-win--stacked .xp-win__body.body--flush {
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-win__collapse {
+    transition: none;
+  }
+}

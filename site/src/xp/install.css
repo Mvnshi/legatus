@@ -1,0 +1,201 @@
+.xp-install {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  background: var(--cream);
+}
+
+.xp-install__banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 28px 14px;
+  text-align: center;
+  color: #fff;
+  background:
+    radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.35), transparent 55%),
+    linear-gradient(180deg, #2a6fe2 0%, #1d4fc4 55%, #0f358f 100%);
+  border-right: 1px solid #0b2f86;
+}
+
+.xp-install__banner strong {
+  margin-top: 8px;
+  font: 700 24px/1.1 var(--font-title);
+  text-shadow: 1px 2px 3px rgba(0, 0, 50, 0.6);
+}
+
+.xp-install__banner span {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.xp-install__main {
+  min-width: 0;
+  padding: 18px 20px 20px;
+}
+
+.xp-install__lead {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.xp-install__group {
+  margin: 0 0 14px;
+  padding: 12px 14px 14px;
+  background: #fff;
+  border: 1px solid #d0d0bf;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.xp-install__group legend {
+  padding: 0 6px;
+  font: 700 15px var(--font-title);
+  color: #0a2c80;
+}
+
+.xp-install__radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 2px 0 10px;
+}
+
+.xp-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 2px 4px;
+  font: 15px var(--font-ui);
+  color: #000;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  box-shadow: none;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.xp-radio:hover {
+  box-shadow: none;
+  background: rgba(10, 36, 106, 0.06);
+}
+
+.xp-radio__dot {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #1d5281;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dcdcd7, #fff);
+}
+
+.xp-radio[data-state="checked"] .xp-radio__dot {
+  border-color: #0a2c80;
+}
+
+.xp-radio:hover .xp-radio__dot {
+  box-shadow: inset -2px -2px #f8b636, inset 2px 2px #fedf9c;
+}
+
+.xp-radio__mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #7de26a, #1c7d20);
+}
+
+.xp-install__hint {
+  margin: 8px 0 4px;
+  font-size: 14px;
+  color: #3a4668;
+}
+
+.xp-install__facts {
+  margin: 0 0 6px;
+  display: grid;
+  gap: 8px;
+}
+
+.xp-install__facts > div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.xp-install__facts dt {
+  font-weight: 700;
+  font-size: 14px;
+  padding-top: 8px;
+}
+
+.xp-install__facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding-top: 7px;
+}
+
+.xp-install__facts dd .xp-codeline {
+  margin: 0;
+}
+
+.xp-install__size {
+  color: #3a4668;
+}
+
+.xp-install__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #c7c3ae;
+}
+
+@media (max-width: 720px) {
+  .xp-install {
+    grid-template-columns: 1fr;
+  }
+
+  .xp-install__banner {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 14px 16px;
+    border-right: 0;
+    border-bottom: 1px solid #0b2f86;
+  }
+
+  .xp-install__banner strong {
+    margin-top: 0;
+  }
+
+  .xp-install__banner .xp-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .xp-install__main {
+    padding: 14px;
+  }
+
+  .xp-install__facts > div {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .xp-install__facts dt,
+  .xp-install__facts dd {
+    padding-top: 2px;
+  }
+
+  .xp-install__buttons .xp-button {
+    flex: 1 1 100%;
+    min-height: 46px;
+  }
+}

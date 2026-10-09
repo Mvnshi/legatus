@@ -1,0 +1,239 @@
+/* ---------- Push buttons ---------- */
+.xp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  min-width: 0;
+  padding: 6px 18px;
+  font: 600 15px/1.2 var(--font-ui);
+  color: #000;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid #003c74;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #fff, #ecebe5 86%, #d8d0c4);
+  box-shadow: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.xp-button:hover {
+  box-shadow: inset -1px 1px #fff0cf, inset 1px 2px #fdd889, inset -2px 2px #fbc761, inset 2px -2px #e5a01a;
+}
+
+.xp-button:active {
+  background: linear-gradient(180deg, #cdcac3, #e3e3db 8%, #e5e5de 94%, #f2f2f1);
+  box-shadow: none;
+}
+
+.xp-button[aria-disabled="true"] {
+  color: #5d5f66;
+  border-color: #a7a7a0;
+  background: #f4f3ee;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.xp-button[aria-disabled="true"] .xp-icon {
+  filter: grayscale(1) opacity(0.55);
+}
+
+/* The "go" button: green and glossy, dark text so it reads without relying on white-on-green. */
+.xp-button--go {
+  color: #0a3d0a;
+  border-color: #1c6b1c;
+  background: linear-gradient(180deg, #e2fbd3, #a9e68e 48%, #86d86a 52%, #6cc852);
+  font-weight: 700;
+}
+
+.xp-button--go:hover {
+  box-shadow: inset 0 0 0 2px #fff4c4, inset 0 0 0 3px #f0b020;
+}
+
+/* Toolbar buttons: icon beside the label, flat until hovered, like an Explorer toolbar. */
+.xp-button--toolbar {
+  min-height: 44px;
+  padding: 4px 12px 4px 8px;
+  border-color: transparent;
+  background: transparent;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.xp-button--toolbar:hover {
+  border-color: #a7b8d8;
+  background: linear-gradient(180deg, #fff, #e6eefc);
+  box-shadow: none;
+}
+
+.xp-button--toolbar:active {
+  background: linear-gradient(180deg, #d5def0, #e9effa);
+}
+
+.xp-button--toolbar[aria-disabled="true"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* ---------- Tabs (the look comes from XP.css; these set size and overflow) ---------- */
+.xp-tablist.xp-tablist,
+menu.xp-tablist[role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 -2px;
+  padding: 8px 8px 0 8px;
+  list-style: none;
+  position: relative;
+  z-index: 3;
+}
+
+menu.xp-tablist[role="tablist"] .xp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 6px 12px 7px;
+  font: 600 14px/1.2 var(--font-ui);
+  color: #1b1f2a;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  min-width: 0;
+}
+
+menu.xp-tablist[role="tablist"] .xp-tab[aria-selected="true"] {
+  padding-bottom: 8px;
+  color: #000;
+}
+
+.xp-tabpanel[role="tabpanel"] {
+  margin: 0 8px 8px;
+  padding: 14px;
+  overflow: auto;
+  font-size: 15px;
+}
+
+.xp-tabpanel:focus-visible {
+  outline-offset: -3px;
+}
+
+/* ---------- Progress (green blocks from XP.css) ---------- */
+.xp-progress {
+  width: 100%;
+  height: 16px;
+  margin: 6px 0 2px;
+}
+
+/* ---------- Menu bar ---------- */
+.xp-menubar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px 6px;
+  background: var(--cream);
+  border-bottom: 1px solid #c7c3ae;
+  font: 14px var(--font-ui);
+}
+
+.xp-menubar__trigger {
+  min-height: 34px;
+  padding: 4px 11px;
+  font: 14px var(--font-ui);
+  color: #000;
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: none;
+  cursor: default;
+  min-width: 0;
+}
+
+.xp-menubar__trigger:hover,
+.xp-menubar__trigger[data-state="open"],
+.xp-menubar__trigger[data-highlighted] {
+  background: #316ac5;
+  color: #fff;
+  box-shadow: none;
+}
+
+.xp-menubar__trigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.xp-menu {
+  z-index: 9500;
+  min-width: 232px;
+  padding: 3px;
+  background: #fff;
+  border: 1px solid #aca899;
+  box-shadow: 3px 3px 4px rgba(0, 0, 0, 0.35);
+  font: 14px var(--font-ui);
+  color: #000;
+}
+
+.xp-menu__item {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 3px 12px 3px 4px;
+  cursor: default;
+  outline: none;
+  text-decoration: none;
+  color: inherit;
+}
+
+.xp-menu__item[data-highlighted] {
+  background: #316ac5;
+  color: #fff;
+}
+
+.xp-menu__item[data-disabled] {
+  color: #6b6d73;
+}
+
+.xp-menu__item[data-disabled] .xp-icon {
+  filter: grayscale(1) opacity(0.55);
+}
+
+.xp-menu__icon {
+  display: grid;
+  place-items: center;
+}
+
+.xp-menu__shortcut {
+  color: inherit;
+  opacity: 0.75;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.xp-menu__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.xp-menu__sep {
+  height: 1px;
+  margin: 3px 2px 3px 30px;
+  background: #d4d0c8;
+}
+
+/* ---------- Tooltip ---------- */
+.xp-tooltip {
+  z-index: 9600;
+  max-width: 300px;
+  padding: 6px 9px;
+  background: #ffffe1;
+  color: #000;
+  border: 1px solid #000;
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  font: 13.5px/1.4 var(--font-ui);
+}

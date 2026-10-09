@@ -1,0 +1,235 @@
+.xp-taskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  height: var(--taskbar-h);
+  padding: 0 0 0 0;
+  background: linear-gradient(180deg, #5a95ee 0%, #3a7be6 7%, #2a66dc 16%, #245edb 50%, #1f56d0 88%, #1941a5 100%);
+  border-top: 1px solid #0c3a9a;
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.25) inset;
+  font-family: var(--font-ui);
+  color: #fff;
+}
+
+/* ---------- Start button ---------- */
+.xp-start {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: calc(var(--taskbar-h) + 1px);
+  margin: -1px 0 0 0;
+  padding: 0 22px 0 12px;
+  color: #fff;
+  background: linear-gradient(180deg, #6fcb6f 0%, #4cb04c 12%, #3c9c3c 45%, #338f33 70%, #2b7f2b 100%);
+  border: 0;
+  border-radius: 0 16px 16px 0;
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.45), inset 0 -3px 4px rgba(0, 60, 0, 0.35), 3px 0 5px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.xp-start:hover {
+  background: linear-gradient(180deg, #86dc86 0%, #5fc25f 12%, #4cae4c 45%, #43a143 70%, #388f38 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.5), inset 0 -3px 4px rgba(0, 60, 0, 0.3), 3px 0 5px rgba(0, 0, 0, 0.35);
+}
+
+.xp-start[data-state="open"],
+.xp-start:active {
+  background: linear-gradient(180deg, #2b7f2b, #338f33 40%, #3c9c3c);
+  box-shadow: inset 0 3px 5px rgba(0, 40, 0, 0.5);
+}
+
+.xp-start__label {
+  font: italic 700 24px/1 var(--font-title);
+  letter-spacing: 0.01em;
+  text-shadow: 1px 2px 2px rgba(20, 70, 20, 0.85);
+}
+
+.xp-start__logo {
+  filter: drop-shadow(0 1px 1px rgba(0, 40, 0, 0.5));
+}
+
+.xp-start:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -5px;
+}
+
+/* ---------- Window buttons ---------- */
+.xp-taskbar__windows {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.xp-taskbar__windows::-webkit-scrollbar {
+  display: none;
+}
+
+.xp-taskbtn {
+  flex: 0 1 190px;
+  min-width: 44px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  font: 14px/1 var(--font-ui);
+  color: #fff;
+  background: linear-gradient(180deg, #4a88ea 0%, #3573e0 20%, #2f69d6 70%, #2a60cb 100%);
+  border: 1px solid #1a3f9f;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-align: left;
+  cursor: pointer;
+  min-height: 0;
+}
+
+.xp-taskbtn:hover {
+  background: linear-gradient(180deg, #5b97f0 0%, #4580e6 20%, #3b75dc 70%, #3068d2 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.xp-taskbtn.is-active {
+  background: linear-gradient(180deg, #1b45a8, #2252b8 30%, #2656c0);
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 40, 0.6);
+  font-weight: 700;
+}
+
+.xp-taskbtn.is-minimized .xp-taskbtn__label {
+  opacity: 0.92;
+}
+
+.xp-taskbtn__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.xp-taskbtn .xp-icon {
+  flex: none;
+}
+
+/* ---------- The "Simulated demo" label ---------- */
+.xp-taskbar__badge {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 10px;
+  font: 700 13px/1.1 var(--font-ui);
+  letter-spacing: 0.02em;
+  color: #1c1400;
+  background: #ffffe1;
+  border: 1px solid #000;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Notification area ---------- */
+.xp-tray {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px 0 10px;
+  background: linear-gradient(180deg, #1b7fe0 0%, #1176d8 20%, #0e6bc9 70%, #0a5fbe 100%);
+  border-left: 1px solid #0b4fa6;
+  box-shadow: inset 1px 0 0 #3ea0f2, 0 -1px 0 #0b4fa6 inset;
+}
+
+.xp-tray__btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.xp-tray__btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: none;
+}
+
+.xp-tray__btn[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.xp-tray__clock {
+  min-width: 64px;
+  padding-left: 8px;
+  text-align: right;
+  font: 14px/1 var(--font-ui);
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ---------- Narrow desktops and phones ---------- */
+.desktop--stacked .xp-taskbar {
+  position: sticky;
+  bottom: 0;
+}
+
+/* On a phone the label sits at the top of the stack instead (see desktop.css). */
+.desktop--stacked .xp-taskbar__badge {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .xp-taskbtn {
+    flex: 0 0 auto;
+    padding: 0 9px;
+  }
+
+  /* Icons only on a phone, but the buttons keep their names for screen readers. */
+  .xp-taskbtn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .xp-start {
+    padding-right: 14px;
+  }
+
+  .xp-start__label {
+    font-size: 20px;
+  }
+
+  .xp-taskbtn {
+    min-width: 46px;
+    height: 38px;
+    justify-content: center;
+  }
+
+  .xp-tray__clock {
+    display: none;
+  }
+
+  .xp-tray {
+    padding: 0 6px;
+  }
+}
