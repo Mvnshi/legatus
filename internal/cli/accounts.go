@@ -19,6 +19,7 @@ const accountsUsage = `Usage:
   legatus accounts add --id NAME --provider codex|claude [--home DIR|default] [--max N] [--label TEXT]
   legatus accounts ls
   legatus accounts login NAME     sign in to that login (you do the sign-in; Legatus never sees your password)
+  legatus accounts set NAME [--model MODEL] [--effort LEVEL]   which model this login asks for
   legatus accounts enable|disable NAME
   legatus accounts rm NAME
 
@@ -44,6 +45,8 @@ func cmdAccounts(args []string, stdout, stderr io.Writer) int {
 		return accountsToggle(sub == "disable", rest, stdout, stderr)
 	case "rm", "remove":
 		return accountsRemove(rest, stdout, stderr)
+	case "set":
+		return accountsSet(rest, stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "legatus: unknown accounts command %q\n\n%s", sub, accountsUsage)
 	return 64
@@ -56,6 +59,8 @@ func accountsAdd(args []string, stdout, stderr io.Writer) int {
 	home := fs.String("home", "", "the login's folder, or \"default\" for the agent's normal login (default: a new folder)")
 	max := fs.Int("max", 1, "how many tasks may use this login at once")
 	label := fs.String("label", "", "a description shown in listings")
+	model := fs.String("model", "", "the model this login asks the agent for (default: the agent's own)")
+	effort := fs.String("effort", "", "how hard it thinks, for agents that have such a setting (codex: low, medium, high ...)")
 	root := fs.String("root", "", "where Legatus keeps its files")
 	if code, ok := parse(fs, args); !ok {
 		return code
@@ -79,6 +84,11 @@ func accountsAdd(args []string, stdout, stderr io.Writer) int {
 	acct, err := a.AddAccount(*id, *provider, *home, *label, *max)
 	if err != nil {
 		return fail(stderr, err)
+	}
+	if *model != "" || *effort != "" {
+		if err := a.SetAccountOptions(*id, *model, *effort); err != nil {
+			return fail(stderr, err)
+		}
 	}
 	if acct.Home == "" {
 		fmt.Fprintf(stdout, "Added %s (%s), using the login %s already has on this computer.\n", *id, *provider, *provider)
@@ -104,7 +114,7 @@ func accountsList(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tPROVIDER\tSTATE\tIN USE\tFOLDER")
+	fmt.Fprintln(tw, "ID\tPROVIDER\tMODEL\tSTATE\tIN USE\tFOLDER")
 	for _, s := range snaps {
 		state := "ready"
 		switch {
@@ -117,7 +127,14 @@ func accountsList(args []string, stdout, stderr io.Writer) int {
 		if folder == "" {
 			folder = "(the agent's normal login)"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d/%d\t%s\n", s.ID, s.Provider, state, s.Active, max1(s.MaxConcurrent), folder)
+		model := "(default)"
+		if s.Model != "" {
+			model = s.Model
+			if s.Effort != "" {
+				model += " " + s.Effort
+			}
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d/%d\t%s\n", s.ID, s.Provider, model, state, s.Active, max1(s.MaxConcurrent), folder)
 	}
 	tw.Flush()
 	return 0
@@ -225,5 +242,30 @@ func accountsRemove(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	fmt.Fprintf(stdout, "Removed %s. Its folder was left alone; delete it yourself if you want the login gone.\n", fs.Arg(0))
+	return 0
+}
+
+func accountsSet(args []string, stdout, stderr io.Writer) int {
+	fs := newFlags("accounts set", stderr)
+	model := fs.String("model", "", "the model this login asks the agent for; empty puts the agent's default back")
+	effort := fs.String("effort", "", "how hard it thinks; empty puts the agent's default back")
+	root := fs.String("root", "", "where Legatus keeps its files")
+	// The login's name comes first: legatus accounts set main --model gpt-6.1-sol
+	if len(args) == 0 || len(args[0]) == 0 || args[0][0] == '-' {
+		fmt.Fprintln(stderr, "Usage: legatus accounts set <name> [--model MODEL] [--effort LEVEL]")
+		return 64
+	}
+	name := args[0]
+	if code, ok := parse(fs, args[1:]); !ok {
+		return code
+	}
+	a, ok := openApp(*root, stderr)
+	if !ok {
+		return 1
+	}
+	if err := a.SetAccountOptions(name, *model, *effort); err != nil {
+		return fail(stderr, err)
+	}
+	fmt.Fprintf(stdout, "%s now asks for model %q, effort %q (an empty value means the agent's own default).\n", name, *model, *effort)
 	return 0
 }

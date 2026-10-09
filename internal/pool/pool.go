@@ -23,6 +23,8 @@ type Account struct {
 	Home          string `json:"home,omitempty"` // the agent's configuration directory for this login
 	MaxConcurrent int    `json:"max_concurrent,omitempty"`
 	Disabled      bool   `json:"disabled,omitempty"`
+	Model         string `json:"model,omitempty"`  // the model this login asks the agent for; the agent's default when empty
+	Effort        string `json:"effort,omitempty"` // how hard it thinks, where the agent has such a setting (codex)
 }
 
 func (a Account) max() int {

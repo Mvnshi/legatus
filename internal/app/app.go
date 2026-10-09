@@ -168,3 +168,26 @@ func (a *App) SetAccountDisabled(id string, disabled bool) error {
 	}
 	return a.SaveAccounts()
 }
+
+var optionPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,63}$`)
+
+// SetAccountOptions changes which model a login asks its agent for, and how hard it thinks. An empty value
+// puts the agent's own default back.
+func (a *App) SetAccountOptions(id, model, effort string) error {
+	for _, v := range []string{model, effort} {
+		if v != "" && !optionPattern.MatchString(v) {
+			return fmt.Errorf("%q is not a model or effort name", v)
+		}
+	}
+	for _, s := range a.Pool.Snapshots() {
+		if s.ID == id {
+			acct := s.Account
+			acct.Model, acct.Effort = model, effort
+			if err := a.Pool.Add(acct); err != nil {
+				return err
+			}
+			return a.SaveAccounts()
+		}
+	}
+	return fmt.Errorf("no account named %q", id)
+}

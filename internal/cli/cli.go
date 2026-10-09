@@ -22,6 +22,7 @@ Usage:
   legatus queue "what to do"           add a task to the running daemon
   legatus pr <run>                     push a finished run's branch and open a pull request
   legatus resume <run>                 continue a run that was interrupted
+  legatus cancel <run>                 stop a run that has not finished
   legatus runs [--status <status>]     list runs, optionally filtered by status
   legatus show <run>                   show a run and its evidence report
   legatus accounts <add|ls|login|rm|enable|disable>
@@ -65,6 +66,8 @@ func Main(args []string, stdout, stderr io.Writer) int {
 		return cmdDemo(rest, stdout, stderr)
 	case "clean":
 		return cmdClean(rest, stdout, stderr)
+	case "cancel":
+		return cmdCancel(rest, stdout, stderr)
 	case "pr":
 		return cmdPR(rest, stdout, stderr)
 	case "automations":

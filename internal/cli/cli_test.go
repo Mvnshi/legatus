@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"github.com/Mvnshi/legatus/internal/app"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -233,5 +234,64 @@ func TestTheExampleAutomationsFileIsValidAndTheCommandsWork(t *testing.T) {
 	}
 	if code, _, _ := invoke(t, home, "automations", "frobnicate"); code != 64 {
 		t.Fatalf("unknown subcommand: %d", code)
+	}
+}
+
+func TestALoginCanAskForAModelAndAnEffort(t *testing.T) {
+	home := t.TempDir()
+	if code, _, errText := invoke(t, home, "accounts", "add", "--id", "main", "--provider", "codex", "--home", "default", "--model", "gpt-6.1-sol", "--effort", "high"); code != 0 {
+		t.Fatalf("add: %d %s", code, errText)
+	}
+	if _, out, _ := invoke(t, home, "accounts", "ls"); !strings.Contains(out, "gpt-6.1-sol high") {
+		t.Fatalf("the model is not shown:\n%s", out)
+	}
+	if code, _, errText := invoke(t, home, "accounts", "set", "main", "--model", "gpt-6.2"); code != 0 {
+		t.Fatalf("set: %d %s", code, errText)
+	}
+	_, out, _ := invoke(t, home, "accounts", "ls")
+	if !strings.Contains(out, "gpt-6.2") || strings.Contains(out, "gpt-6.2 high") {
+		t.Fatalf("set should replace both values (an empty effort puts the default back):\n%s", out)
+	}
+	if code, _, _ := invoke(t, home, "accounts", "set", "main"); code != 0 {
+		t.Fatal("set with no options should put the defaults back")
+	}
+	if _, out, _ := invoke(t, home, "accounts", "ls"); !strings.Contains(out, "(default)") {
+		t.Fatalf("defaults were not restored:\n%s", out)
+	}
+	for _, args := range [][]string{
+		{"accounts", "set", "ghost", "--model", "x"},
+		{"accounts", "set", "main", "--model", "bad name; rm -rf"},
+		{"accounts", "set"},
+	} {
+		if code, _, _ := invoke(t, home, args...); code == 0 {
+			t.Errorf("%v was accepted", args)
+		}
+	}
+}
+
+func TestCancelMarksAnUnfinishedRunWithoutADaemon(t *testing.T) {
+	home := t.TempDir()
+	a, err := app.Open(home, app.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, status := range map[string]model.Status{"aaaa1111": model.Running, "bbbb2222": model.Succeeded, "cccc3333": model.NeedsHuman} {
+		if err := a.Store.Save(&model.Run{ID: id, Status: status, Task: model.Task{Title: id}, CreatedAt: time.Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if code, out, errText := invoke(t, home, "cancel", "aaaa1111"); code != 0 || !strings.Contains(out, "Canceled aaaa1111") {
+		t.Fatalf("cancel: %d %q %q", code, out, errText)
+	}
+	if got, _ := a.Store.Load("aaaa1111"); got.Status != model.Canceled {
+		t.Fatalf("status = %s", got.Status)
+	}
+	for _, id := range []string{"bbbb2222", "cccc3333", "nope0000"} {
+		if code, _, _ := invoke(t, home, "cancel", id); code != 1 {
+			t.Errorf("cancel %s: exit %d, want 1", id, code)
+		}
+	}
+	if code, _, _ := invoke(t, home, "cancel"); code != 64 {
+		t.Errorf("cancel with no run: %d", code)
 	}
 }

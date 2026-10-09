@@ -343,3 +343,17 @@ func TestPreflightReportsAWorkingAndABrokenWindowsSandbox(t *testing.T) {
 		t.Fatalf("probe command line = %s", data)
 	}
 }
+
+func TestALoginsModelAndEffortReachTheCommandLine(t *testing.T) {
+	b := &Backend{GOOS: "linux", Model: "backend-default"}
+	join := func(a pool.Account) string {
+		return strings.Join(b.Args(agent.Request{Dir: "d", Account: a}, "last.txt"), " ")
+	}
+	if got := join(pool.Account{}); !strings.Contains(got, "-m backend-default") || strings.Contains(got, "model_reasoning_effort") {
+		t.Fatalf("no account setting: %s", got)
+	}
+	got := join(pool.Account{Model: "gpt-6.1-sol", Effort: "high"})
+	if !strings.Contains(got, "-m gpt-6.1-sol") || strings.Contains(got, "backend-default") || !strings.Contains(got, `model_reasoning_effort="high"`) {
+		t.Fatalf("the login's own choice must win: %s", got)
+	}
+}

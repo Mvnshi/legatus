@@ -123,8 +123,15 @@ func (b *Backend) Args(req agent.Request, lastMessageFile string) []string {
 	} else {
 		args = append(args, "--sandbox", "workspace-write", "-c", fmt.Sprintf("sandbox_workspace_write.network_access=%t", req.Sandbox.Network))
 	}
-	if b.Model != "" {
-		args = append(args, "-m", b.Model)
+	model := b.Model
+	if req.Account.Model != "" {
+		model = req.Account.Model // the login's own choice is the more specific one
+	}
+	if model != "" {
+		args = append(args, "-m", model)
+	}
+	if req.Account.Effort != "" {
+		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", req.Account.Effort))
 	}
 	args = append(args, b.ExtraArgs...)
 	return append(args, "-")

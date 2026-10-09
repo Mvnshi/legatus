@@ -94,8 +94,12 @@ func (b *Backend) Args(req agent.Request) []string {
 			args = append(args, "--disallowedTools", "WebFetch,WebSearch")
 		}
 	}
-	if b.Model != "" {
-		args = append(args, "--model", b.Model)
+	model := b.Model
+	if req.Account.Model != "" {
+		model = req.Account.Model
+	}
+	if model != "" {
+		args = append(args, "--model", model)
 	}
 	return append(args, b.ExtraArgs...)
 }
