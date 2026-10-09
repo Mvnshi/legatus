@@ -63,26 +63,6 @@ redacted again. Findings record the kind and count, never the value.
 **The agent's sandbox is checked, not assumed.** See the README. `Preflighter` backends are probed once per
 login per process; a failed probe fails the run fast with instructions. `--no-sandbox` is explicit and noisy.
 
-## Compared with Cezar
-
-Facts below come from Cezar's README, site and public issues in October 2026; its code was not read.
-
-| | Cezar | Legatus |
-| --- | --- | --- |
-| Language, install | TypeScript, `npx`, Node 20+ | Go, one binary |
-| Windows | macOS, Linux, WSL2 listed | native |
-| Agents | Claude Code, Codex, Copilot CLI, OpenCode, Cursor, Junie, Pi | Codex, Claude Code (more via the Backend interface) |
-| Parallel runs in worktrees | yes (issue #1301: lock failure on parallel create) | yes; creation is serialised per repo, tested with 12 at once |
-| Usage limits | auto-resume exists; #1300: remaining workflow steps not continued | login pool, continue on another login, wait for reset, finish the workflow |
-| Cockpit, phone access | yes | yes, a basic one (runs, live journal, report, diff, logins, new task; phone-sized screens work) |
-| GitHub / Jira / Linear, schedules | yes | not yet |
-| Review of the result | PRs await a human | independent read-only agent review, then a human |
-| Sandboxing | worktree isolation | worktree + agent sandbox checked first + scrubbed environment + redaction |
-| Maturity | 1,400+ commits, 500+ stars | days old |
-
-Where Cezar is ahead (cockpit, trackers, schedules, breadth of agents, maturity) the plan is to catch up on
-the parts people use, not to copy its code. The wedge is the usage-limit, Windows, review and sandboxing rows.
-
 ## The daemon
 
 `legatus serve` owns the Legatus directory. `internal/queue` keeps a line of waiting runs and a fixed number of

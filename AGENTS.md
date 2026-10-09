@@ -12,7 +12,7 @@ Run these from the repository root. All three must be clean:
 ```sh
 gofmt -l .          # prints nothing
 go vet ./...
-go test ./...       # takes a few minutes: the engine, queue and server tests start real git processes
+go test -p 2 ./...  # takes a few minutes: the engine, queue and server tests start real git processes
 ```
 
 `node --check internal/server/ui/app.js` is part of the server tests, so a JavaScript typo fails `go test`.
