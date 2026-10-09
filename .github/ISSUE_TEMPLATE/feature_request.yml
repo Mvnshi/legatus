@@ -1,0 +1,22 @@
+name: Idea or feature request
+description: Something Legatus should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem first, before the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Legatus to do?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+  - type: markdown
+    attributes:
+      value: The [backlog](https://github.com/Mvnshi/legatus/blob/main/docs/BACKLOG.md) lists what is already wanted.

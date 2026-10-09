@@ -1,0 +1,43 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. **Do not paste secrets** (tokens, API keys, the daemon's `token` file). For a security problem,
+        please use the private report described in [SECURITY.md](https://github.com/Mvnshi/legatus/blob/main/SECURITY.md)
+        instead of an issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: The commands you ran, and the workflow file if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `legatus doctor` and `legatus version`
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11 / macOS 15 / Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The run's report or journal, if there was a run
+      description: "`legatus show -events <run id>`. Remove anything private first."
+      render: text
