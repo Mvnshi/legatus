@@ -1,0 +1,686 @@
+/* ---------- Run toolbar ---------- */
+.run-toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: linear-gradient(180deg, #f8f7f0, var(--cream));
+  border-bottom: 1px solid #c7c3ae;
+}
+
+.run-toolbar__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 6px;
+  background: #b8b39c;
+  box-shadow: 1px 0 0 #fff;
+}
+
+/* ---------- Section labels and shared pieces ---------- */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px 0 8px;
+  font: 700 13px/1.2 var(--font-ui);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #0b3ba8;
+}
+
+.section-label:first-child {
+  margin-top: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  font: 600 13px/1.4 var(--font-mono);
+  color: #0f2a6b;
+  background: #e1ebfc;
+  border: 1px solid #9db8e6;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.chip--limit {
+  color: #6b3a00;
+  background: var(--warn-bg);
+  border-color: #e0b469;
+}
+
+.chip--plain {
+  font-family: var(--font-ui);
+  background: #f1f0e6;
+  border-color: #cfcab4;
+  color: #3a3d48;
+}
+
+.login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 6px;
+  font: 600 13px/1.4 var(--font-ui);
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.login-badge--ready {
+  color: #0f5a13;
+  background: var(--ok-bg);
+  border-color: #8fcf86;
+}
+
+.login-badge--working {
+  color: #0b3ba8;
+  background: #e1ebfc;
+  border-color: #9db8e6;
+}
+
+.login-badge--limited {
+  color: #7a3f00;
+  background: var(--warn-bg);
+  border-color: #e0b469;
+}
+
+.login-badge--reviewing {
+  color: #4a1f8a;
+  background: #efe6fb;
+  border-color: #c3aaea;
+}
+
+/* ---------- Overview ---------- */
+.ov-ready {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #f3fcee, #e2f6dc);
+  border: 1px solid #8fcf86;
+  border-radius: 6px;
+}
+
+.ov-ready .xp-icon {
+  flex: none;
+}
+
+.ov-ready__title {
+  margin: 0 0 2px;
+  font: 700 22px/1.2 var(--font-title);
+}
+
+.ov-ready__text {
+  margin: 0 0 10px;
+  color: #1f3320;
+}
+
+.ov-ready__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f7f7f2;
+  border: 1px solid #d6d2c2;
+  border-radius: 5px;
+}
+
+.step--running {
+  background: #eef4ff;
+  border-color: #9db8e6;
+  box-shadow: inset 3px 0 0 #2f78e6;
+}
+
+.step--succeeded {
+  background: #f1faee;
+  border-color: #b5dcaf;
+}
+
+.step__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.step__type {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: 13px;
+  color: #4a5068;
+}
+
+.step__detail {
+  margin: 0;
+  font-size: 14px;
+  color: #3a4056;
+}
+
+.step__logins {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.step__logins:empty {
+  display: none;
+}
+
+.step > :first-child {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-top: 2px;
+}
+
+.step-dot {
+  width: 18px;
+  height: 18px;
+  margin: 0 auto;
+  border: 2px solid #9aa3bd;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.step-spinner {
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+  border: 3px solid #bcd0f6;
+  border-top-color: #1d5ad4;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-spinner {
+    animation: none;
+    border-top-color: #bcd0f6;
+    border-right-color: #1d5ad4;
+  }
+}
+
+.checkpoint {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #eef4ff;
+  border: 1px solid #9db8e6;
+  border-radius: 6px;
+}
+
+.checkpoint .xp-icon {
+  flex: none;
+}
+
+.checkpoint__title {
+  margin: 0 0 2px;
+  font-weight: 700;
+}
+
+.checkpoint__text {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.checkpoint__text--quiet {
+  color: #3a4668;
+}
+
+.checkpoint__file {
+  display: inline-block;
+  margin: 0 4px 2px 0;
+}
+
+.tally {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.tally > div {
+  padding: 8px 12px;
+  background: #f7f7f2;
+  border: 1px solid #d6d2c2;
+  border-radius: 5px;
+}
+
+.tally dt {
+  font-size: 13px;
+  color: #3a4668;
+}
+
+.tally dd {
+  margin: 0;
+  font: 700 24px/1.2 var(--font-title);
+  color: #0a246a;
+}
+
+.tally__of {
+  font: 400 14px var(--font-ui);
+  color: #3a4668;
+}
+
+/* ---------- Journal ---------- */
+.journal {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px;
+  height: 100%;
+  min-height: 220px;
+  max-height: 100%;
+  overflow: auto;
+  font: 13.5px/1.55 var(--font-mono);
+  color: #e8efff;
+  background: #0f1a33;
+  border-radius: 3px;
+}
+
+.journal__empty {
+  color: #aebbd9;
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+
+.journal__line {
+  display: grid;
+  grid-template-columns: 8ch auto 1fr;
+  gap: 10px;
+  padding: 1px 0;
+}
+
+.journal__line time {
+  color: #8fa3cf;
+}
+
+.journal__step {
+  color: #9fc1ff;
+  min-width: 11ch;
+}
+
+.journal__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.journal__line--warn .journal__text {
+  color: #ffc873;
+  font-weight: 700;
+}
+
+.journal__line--ok .journal__text {
+  color: #9bf08b;
+}
+
+.journal__line--tool .journal__text {
+  color: #cfe0ff;
+}
+
+.journal__line--say .journal__text {
+  color: #e9d9ff;
+}
+
+/* ---------- Checks ---------- */
+.checks__lead {
+  margin: 0 0 12px;
+  color: #3a4668;
+  font-size: 14px;
+}
+
+.checks__list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f7f7f2;
+  border: 1px solid #d6d2c2;
+  border-radius: 5px;
+}
+
+.check--passed {
+  background: #f1faee;
+  border-color: #b5dcaf;
+}
+
+.check--running {
+  background: #eef4ff;
+  border-color: #9db8e6;
+}
+
+.check code {
+  background: transparent;
+  padding: 0;
+  font-size: 14.5px;
+}
+
+.check__state {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.checks__result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-weight: 600;
+  color: #0f5a13;
+}
+
+/* ---------- Review and diff ---------- */
+.verdict {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #f3fcee, #e2f6dc);
+  border: 1px solid #8fcf86;
+  border-radius: 6px;
+}
+
+.verdict .xp-icon {
+  flex: none;
+}
+
+.verdict__title {
+  margin: 0 0 2px;
+}
+
+.verdict__text {
+  margin: 0;
+  font-size: 14px;
+  color: #1f3320;
+}
+
+.review__wait {
+  margin: 0 0 10px;
+  color: #3a4668;
+}
+
+.diff {
+  margin: 0 0 12px;
+  border: 1px solid #c8c4b0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.diff figcaption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: #efede0;
+  border-bottom: 1px solid #c8c4b0;
+}
+
+.diff figcaption code {
+  background: transparent;
+  padding: 0;
+}
+
+.diff__by {
+  margin-left: auto;
+  font-size: 13px;
+  color: #3a4668;
+}
+
+.diff pre {
+  padding: 8px 0;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.diff__line {
+  display: block;
+  padding: 0 12px;
+  white-space: pre;
+}
+
+.diff__line--add {
+  background: #e4f7de;
+  color: #0f4a13;
+}
+
+.diff__line--del {
+  background: #fde5e2;
+  color: #8a1a10;
+}
+
+.diff__line--hunk {
+  background: #eaf0fc;
+  color: #1a3d8f;
+}
+
+/* ---------- Mini logins in the task pane ---------- */
+.mini-logins {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mini-logins li {
+  display: grid;
+  gap: 3px;
+}
+
+.mini-logins__name {
+  font: 600 13.5px var(--font-mono);
+}
+
+/* ---------- Logins window ---------- */
+.logins {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.login {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  grid-template-areas:
+    "icon name badge"
+    "icon note note";
+  column-gap: 10px;
+  row-gap: 1px;
+  align-items: center;
+  padding: 7px 10px;
+  background: #fff;
+  border: 1px solid #c8c4b0;
+  border-radius: 5px;
+}
+
+.login--limited {
+  background: #fffaf0;
+  border-color: #e0b469;
+}
+
+.login__icon {
+  grid-area: icon;
+  align-self: center;
+}
+
+.login__name {
+  grid-area: name;
+  margin: 0;
+  font-weight: 700;
+}
+
+.login .login-badge {
+  grid-area: badge;
+}
+
+.login__provider {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: 13px;
+  color: #3a4668;
+}
+
+.login__note {
+  grid-area: note;
+  margin: 0;
+  font-size: 13.5px;
+  color: #3a4056;
+}
+
+.logins__foot {
+  font-size: 13.5px;
+  color: #3a4668;
+}
+
+/* ---------- Getting started ---------- */
+.guide__list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.guide__list li {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.guide__mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font: 700 14px var(--font-ui);
+  color: #0a246a;
+  background: #fff;
+  border: 2px solid #9aa3bd;
+  border-radius: 50%;
+}
+
+.guide__list .is-done .guide__mark {
+  border-color: transparent;
+  background: transparent;
+}
+
+.guide__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.3;
+}
+
+.guide__text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: #3a4056;
+}
+
+.guide__tip {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #ffffe1;
+  border: 1px solid #c9c27a;
+}
+
+/* ---------- evidence.md and notes ---------- */
+.evidence {
+  flex: 1;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  font: 13.5px/1.6 var(--font-mono);
+  color: #111;
+  background: #fff;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.notes ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.notes__lead {
+  font-size: 14.5px;
+}
+
+.notes li {
+  font-size: 14.5px;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 640px) {
+  .run-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .run-toolbar__sep {
+    display: none;
+  }
+
+  .run-toolbar .xp-button--toolbar {
+    justify-content: flex-start;
+    min-height: 48px;
+    border-color: #c7c3ae;
+    background: linear-gradient(180deg, #fff, #f1efe4);
+  }
+
+  .run-toolbar .xp-button--toolbar[aria-disabled="true"] {
+    background: #f4f3ee;
+  }
+}
+
+/* In a stacked window nothing else bounds the journal, so bound it here rather than let the page jump. */
+.desktop--stacked .journal {
+  height: 320px;
+  max-height: 320px;
+}

@@ -1,0 +1,134 @@
+.xp-balloon-region {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  width: min(360px, calc(100% - 20px));
+  pointer-events: none;
+}
+
+.xp-balloon {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 14px 14px;
+  background: #ffffe1;
+  color: #000;
+  border: 1px solid #000;
+  border-radius: 8px;
+  box-shadow: 3px 4px 8px rgba(0, 0, 30, 0.4);
+  font: 14px/1.45 var(--font-ui);
+  pointer-events: auto;
+}
+
+/* The tail points down at the notification area. */
+.xp-balloon::after {
+  content: "";
+  position: absolute;
+  right: 36px;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  background: #ffffe1;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+
+.xp-balloon__icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.xp-balloon__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.xp-balloon__title {
+  margin: 0 0 2px;
+  padding-right: 20px;
+  font: 700 15px/1.3 var(--font-ui);
+}
+
+.xp-balloon__text {
+  margin: 0;
+  color: #1a1d28;
+}
+
+.xp-balloon__action {
+  margin-top: 10px;
+  min-height: 36px;
+  padding: 4px 14px;
+  font: 600 14px var(--font-ui);
+  color: #000;
+  border: 1px solid #003c74;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #fff, #ecebe5 86%, #d8d0c4);
+  cursor: pointer;
+}
+
+.xp-balloon__action:hover {
+  box-shadow: inset -1px 1px #fff0cf, inset 1px 2px #fdd889, inset -2px 2px #fbc761, inset 2px -2px #e5a01a;
+}
+
+.xp-balloon__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font: 700 22px/1 var(--font-ui);
+  color: #3a3a3a;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.xp-balloon__close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+}
+
+.xp-balloon--warning {
+  background: #fff6dc;
+}
+
+.xp-balloon--warning::after {
+  background: #fff6dc;
+}
+
+.xp-balloon--success {
+  background: #f0fbe9;
+}
+
+.xp-balloon--success::after {
+  background: #f0fbe9;
+}
+
+/* On a phone the balloon follows the person down the stack, just above the taskbar. */
+.desktop--stacked .desktop__balloon {
+  position: sticky;
+  bottom: var(--taskbar-h);
+  height: 0;
+  z-index: 190;
+}
+
+.desktop--stacked .xp-balloon-region {
+  right: auto;
+  left: 10px;
+  bottom: 12px;
+  width: calc(100% - 20px);
+}
+
+.desktop--stacked .xp-balloon::after {
+  display: none;
+}

@@ -1,0 +1,132 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  background: linear-gradient(180deg, #4a8cf0 0%, #2a6fe2 18%, #245edb 55%, #1f55cc 90%, #1a46ad 100%);
+  border-bottom: 2px solid #f0a53a;
+  box-shadow: 0 2px 8px rgba(0, 20, 90, 0.3);
+  color: #fff;
+}
+
+.site-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 20px;
+  max-width: 1240px;
+  min-height: calc(var(--header-h) - 2px);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 28px);
+}
+
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font: italic 700 24px/1 var(--font-title);
+  color: #fff;
+  text-decoration: none;
+  text-shadow: 1px 2px 2px rgba(0, 0, 70, 0.55);
+}
+
+.site-header__brand .xp-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 60, 0.5));
+}
+
+.site-header__nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-header__nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 600 15px/1 var(--font-ui);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  text-shadow: 0 1px 1px rgba(0, 0, 70, 0.5);
+}
+
+.site-header__nav a:hover {
+  background: rgba(255, 255, 255, 0.2);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.site-header__nav .site-header__github {
+  margin-left: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(8, 40, 140, 0.35);
+}
+
+@media (max-width: 700px) {
+  .site-header__inner {
+    padding-bottom: 6px;
+  }
+
+  .site-header__nav {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-header__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header__nav ul {
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+
+  .site-header__nav a {
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  .site-header__brand {
+    font-size: 22px;
+  }
+}
+
+.nav-short {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .nav-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .nav-short {
+    display: inline;
+  }
+
+  .site-header__nav a {
+    padding: 0 10px;
+    font-size: 15px;
+  }
+
+  .site-header__nav .site-header__github {
+    margin-left: 2px;
+  }
+
+  .site-header__nav ul {
+    justify-content: space-between;
+  }
+}

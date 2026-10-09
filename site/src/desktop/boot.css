@@ -1,0 +1,82 @@
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #0b1740;
+  cursor: pointer;
+}
+
+.boot__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.boot__name {
+  margin: 10px 0 0;
+  font: italic 700 42px/1 var(--font-title);
+  letter-spacing: 0.01em;
+}
+
+.boot__tag {
+  margin: 0 0 22px;
+  font-size: 16px;
+  color: #bcd2ff;
+}
+
+.boot__bar {
+  position: relative;
+  width: 200px;
+  height: 18px;
+  overflow: hidden;
+  background: #04102f;
+  border: 2px solid #8da5d8;
+  border-radius: 6px;
+}
+
+.boot__bar span {
+  position: absolute;
+  top: 2px;
+  left: -60px;
+  width: 54px;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, #3b86ff 0 14px, transparent 14px 18px);
+  animation: boot-slide 1.3s linear infinite;
+}
+
+.boot__bar span.is-still {
+  left: 4px;
+  width: 120px;
+  animation: none;
+}
+
+@keyframes boot-slide {
+  to {
+    left: 200px;
+  }
+}
+
+.boot__skip {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  min-height: 40px;
+  padding: 6px 18px;
+  font: 600 14px var(--font-ui);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.boot__skip:hover {
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: none;
+}

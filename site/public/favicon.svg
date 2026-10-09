@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Legatus">
+  <rect width="128" height="128" rx="28" fill="#d6a84a"/>
+  <path d="M42 28v60h40" fill="none" stroke="#0f1115" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="99" cy="88" r="7.5" fill="#0f1115"/>
+</svg>
