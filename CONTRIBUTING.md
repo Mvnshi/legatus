@@ -22,6 +22,9 @@ go build -o legatus ./cmd/legatus
 
 On a small machine, `go test -p 2 ./...` uses less memory.
 
+The website in `site/` has its own checks and needs Node.js 22 or newer; see [site/README.md](site/README.md)
+(`npm run typecheck`, `npm test`, `npm run build`, `npm run e2e`). CI runs them in a separate job.
+
 ## What a good change looks like
 
 - **It has a test.** Every change in behaviour has a test that fails without it. Tests never need the network, a

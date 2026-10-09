@@ -50,3 +50,44 @@ jobs:
       - name: The demo runs end to end with stand-in agents
         shell: bash
         run: ./legatus* demo
+
+  site:
+    # The project website in site/: types, unit tests, the production build, and the browser tests run against
+    # that build served from /legatus/, exactly as on GitHub Pages.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests against the build
+        run: npm run e2e
+        env:
+          CI: "true"

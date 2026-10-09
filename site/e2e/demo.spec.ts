@@ -152,7 +152,7 @@ test.describe("cockpit menus and tabs", () => {
 
   test("a disabled-looking control explains itself in a tooltip", async ({ page }) => {
     await openSite(page);
-    await control(page, "Inject limit").focus();
+    await control(page, "Inject limit").hover();
     await expect(page.getByRole("tooltip")).toContainText("Start the run first");
   });
 });

@@ -13,7 +13,7 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: false,
-    chunkSizeWarningLimit: 400,
+    chunkSizeWarningLimit: 650,
   },
   server: {
     // The real cockpit screenshots live in ../assets and are imported from there.

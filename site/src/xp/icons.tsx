@@ -127,11 +127,10 @@ const icons: Record<string, Draw> = {
   branch: () => (
     <>
       <rect x="2.500" y="2.500" width="27" height="27" rx="7" fill="url(#lg-green)" stroke="#146014" />
-      <path d="M11 11v10" fill="none" stroke="#fff" strokeWidth="2.400" strokeLinecap="round" />
-      <path d="M11 20c0-5 10.500-3 10.500-8" fill="none" stroke="#fff" strokeWidth="2.400" strokeLinecap="round" />
-      <circle cx="11" cy="8.500" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
-      <circle cx="11" cy="23.500" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
-      <circle cx="21.500" cy="9.500" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
+      <path d="M10 11c0 6 6 5 6 10M22 11c0 6-6 5-6 10" fill="none" stroke="#fff" strokeWidth="2.400" strokeLinecap="round" />
+      <circle cx="10" cy="9" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
+      <circle cx="22" cy="9" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
+      <circle cx="16" cy="23" r="3.200" fill="#fff" stroke="#146014" strokeWidth=".8" />
       {gloss(4, 3.500, 24, 11, 5.500)}
     </>
   ),
